@@ -18,9 +18,10 @@ use TBamend;
 use TBstrains;
 use TBgroups;
 use TBtools;
+use TBresi;
 
 
-my $VERSION =  "1.1.0";
+my $VERSION =  "2.0.0";
  
 # get current working directory and time.
 my $W_dir         =     getcwd();
@@ -43,6 +44,7 @@ my $JOIN_OUT      =     "$W_dir/Joint";
 my $AMEND_OUT     =     "$W_dir/Amend";
 my $STRAIN_OUT    =     "$W_dir/Classification";
 my $GROUPS_OUT    =     "$W_dir/Groups";
+my $RESI_OUT      =     "$W_dir/Resistance";
 
 # define PATHs.
 my $VAR_dir       =     "$RealBin/var/ref";
@@ -71,6 +73,10 @@ my $micovf              =     "";
 my $micovr              =     "";
 my $miphred20           =     "";
 my $mifreq              =     "";
+my $lfmicovf            =     "";
+my $lfmicovr            =     "";
+my $lfmiphred20         =     "";
+my $lfmifreq            =     "";
 my $unambigous          =     "";
 my $window              =     "";
 my $distance            =     "";
@@ -95,11 +101,15 @@ GetOptions('step:s'        =>    \$step,
            'minbqual:i'    =>    \$mibqual,
            'all_vars'      =>    \$all_vars,
            'snp_vars'      =>    \$snp_vars,
-           'lowfreq_vars'  =>    \$lowfreq_vars,
+           #'lowfreq_vars'  =>    \$lowfreq_vars,
            'mincovf:i'     =>    \$micovf,
            'mincovr:i'     =>    \$micovr,
            'minphred20:i'  =>    \$miphred20,
            'minfreq:i'     =>    \$mifreq,
+           'lfmincovf:i'   =>    \$lfmicovf,
+           'lfmincovr:i'   =>    \$lfmicovr,
+           'lfminphred20:i'=>    \$lfmiphred20,
+           'lfminfreq:i'   =>    \$lfmifreq,
            'unambig:i'     =>    \$unambigous,
            'window:i'      =>    \$window,
            'distance:i'    =>    \$distance,
@@ -189,6 +199,7 @@ unless(($step eq 'TBfull'     )  ||
        ($step eq 'TBvariants' )  ||
        ($step eq 'TBstats'    )  ||
        ($step eq 'TBstrains'  )  ||
+       ($step eq 'TBresi'     )  ||
        ($step eq 'TBjoin'     )  ||
        ($step eq 'TBamend'    )  ||
        ($step eq 'TBgroups'   )
@@ -207,6 +218,10 @@ if($mibqual          eq    ''    ) { $mibqual            =     13;              
 if($all_vars         eq    ''    ) { $all_vars           =     0;                                  }
 if($snp_vars         eq    ''    ) { $snp_vars           =     0;                                  }
 if($lowfreq_vars     eq    ''    ) { $lowfreq_vars       =     0;                                  }
+if($lfmicovf         eq    ''    ) { $lfmicovf           =     1;                                  }
+if($lfmicovr         eq    ''    ) { $lfmicovr           =     1;                                  }
+if($lfmiphred20      eq    ''    ) { $lfmiphred20        =     1;                                  }
+if($lfmifreq         eq    ''    ) { $lfmifreq           =     5;                                  }
 if($micovf           eq    ''    ) { $micovf             =     4;                                  }
 if($micovr           eq    ''    ) { $micovr             =     4;                                  }
 if($miphred20        eq    ''    ) { $miphred20          =     4;                                  }
@@ -271,11 +286,15 @@ print $logprint "<INFO>\t",timer(),"\t--ref\t\t$ref\n";
 print $logprint "<INFO>\t",timer(),"\t--minbqual\t$mibqual\n";
 print $logprint "<INFO>\t",timer(),"\t--all_vars\t$all_vars\n";
 print $logprint "<INFO>\t",timer(),"\t--snp_vars\t$snp_vars\n";
-print $logprint "<INFO>\t",timer(),"\t--lowfreq_vars\t$lowfreq_vars\n";
 print $logprint "<INFO>\t",timer(),"\t--mincovf\t$micovf\n";
 print $logprint "<INFO>\t",timer(),"\t--mincovr\t$micovr\n";
 print $logprint "<INFO>\t",timer(),"\t--minphred20\t$miphred20\n";
 print $logprint "<INFO>\t",timer(),"\t--minfreq\t$mifreq\n";
+#print $logprint "<INFO>\t",timer(),"\t--lowfreq_vars\t$lowfreq_vars\n";
+print $logprint "<INFO>\t",timer(),"\t--lfmincovf\t$lfmicovf\n";
+print $logprint "<INFO>\t",timer(),"\t--lfmincovr\t$lfmicovr\n";
+print $logprint "<INFO>\t",timer(),"\t--lfminphred20\t$lfmiphred20\n";
+print $logprint "<INFO>\t",timer(),"\t--lfminfreq\t$lfmifreq\n";
 print $logprint "<INFO>\t",timer(),"\t--unambig\t$unambigous\n";
 print $logprint "<INFO>\t",timer(),"\t--window\t$window\n";
 print $logprint "<INFO>\t",timer(),"\t--distance\t$distance\n";
@@ -313,6 +332,10 @@ my @pos_files;
 my @pos_files_new;
 my @var_files;
 my @var_files_new;
+my @truecodon_files;
+my @truecodon_files_new;
+my @resi_files;
+my @resi_files_new;
 my @join_files;
 my @join_files_new;
 my @amend_files;
@@ -341,6 +364,7 @@ if($step eq 'TBlist'       ) { goto TBlist      }
 if($step eq 'TBvariants'   ) { goto TBvariants  }
 if($step eq 'TBstats'      ) { goto TBstats     }
 if($step eq 'TBstrains'    ) { goto TBstrains   }
+if($step eq 'TBresi'       ) { goto TBresi      }
 if($step eq 'TBjoin'       ) { goto TBjoin      }
 if($step eq 'TBamend'      ) { goto TBamend     }
 if($step eq 'TBgroups'     ) { goto TBgroups    }
@@ -561,6 +585,9 @@ foreach my $pos_file (sort { $a cmp $b } @pos_files_new) {
 }
 print $logprint "\n<INFO>\t",timer(),"\tStart variant calling...\n";
 tbvariants($logprint,$VAR_dir,$POS_OUT,$CALL_OUT,$ref,$refg,$micovf,$micovr,$miphred20,$mifreq,$resi_list_master,$int_regions,$snp_vars,$lowfreq_vars,@pos_files_new);
+$lowfreq_vars       =     1;
+tbvariants($logprint,$VAR_dir,$POS_OUT,$CALL_OUT,$ref,$refg,$lfmicovf,$lfmicovr,$lfmiphred20,$lfmifreq,$resi_list_master,$int_regions,$snp_vars,$lowfreq_vars,@pos_files_new);
+$lowfreq_vars       =     0;
 print $logprint "<INFO>\t",timer(),"\tFinished variant calling!\n";
 @pos_files     =  ();
 @var_files     =  ();
@@ -629,6 +656,49 @@ print $logprint "\n<INFO>\t",timer(),"\tStart strain call...\n";
 tbstrains($logprint,$VAR_dir,$POS_OUT,$STRAIN_OUT,$ref,$refg,$micovf,$micovr,$mifreq,$miphred20,$date_string,$lowfreq_vars,@pos_files);
 print $logprint "<INFO>\t",timer(),"\tFinished strain call!\n";
 @pos_files     =  ();
+if($continue == 0 && $step ne 'TBfull') { exit 1; }
+
+
+###under construction
+TBresi:
+if($step eq 'TBresi') {
+   print $logprint "\n<INFO>\t",timer(),"\t### [TBresi] selected ###\n";
+}
+opendir(CALLDIR,"$CALL_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $CALL_OUT: MTBseq.pl line: ", __LINE__ ," \n";
+opendir(RESIDIR,"$RESI_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $RESI_OUT: MTBseq.pl line: ", __LINE__ ," \n";
+@truecodon_files     =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_cf$lfmicovf\_cr$lfmicovr\_fr$lfmifreq\_ph$lfmiphred20\_outmode[01]${snp_vars}1\.tab$/ && -f "$CALL_OUT/$_"   }  readdir(CALLDIR);
+@resi_files        =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_resi.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
+
+closedir(CALLDIR);
+closedir(RESIDIR);
+if(scalar(@truecodon_files) == 0) {
+   print $logprint "\n<ERROR>\t",timer(),"\tNo files to call resistance! Check content of $CALL_OUT!\n";
+   exit 1;
+}
+%check_up         =  map { (my $id = $_) =~ s/\..gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_resi.tab$//; $id => $id; } @resi_files;
+for(my $i = 0; $i < scalar(@truecodon_files); $i++) {
+   my $tmp        =  $truecodon_files[$i];
+   $tmp           =~ s/\.gatk_position_true-codon-variants\.tab//;
+   if(!exists $check_up{$tmp}) {
+      push(@truecodon_files_new,$truecodon_files[$i]);
+   }
+}
+if(scalar(@truecodon_files_new) == 0) {
+   print $logprint "\n<ERROR>\t",timer(),"\tAll resi variant files have been already created from $CALL_OUT!\n";
+   exit 1;
+}
+print $logprint "\n<INFO>\t",timer(),"\tCalling resistance:\n";
+foreach my $truecodon_file (sort { $a cmp $b } @truecodon_files_new) {
+   print $logprint "<INFO>\t",timer(),"\t$truecodon_file\n";
+}
+print $logprint "\n<INFO>\t",timer(),"\tStart resistance call...\n";
+tbresi($logprint,$VAR_dir,$CALL_OUT,$RESI_OUT,$ref,$refg,$micovf,$micovr,$mifreq,$miphred20,$date_string,$lowfreq_vars,@pos_files);
+tbresisummary ();
+print $logprint "<INFO>\t",timer(),"\tFinished resistance call!\n";
+@truecodon_files     =  ();
+@truecodon_files_new     =  ();
+@resi_files     =  ();
+
 if($continue == 0 && $step ne 'TBfull') { exit 1; }
 
 
