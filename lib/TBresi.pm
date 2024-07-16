@@ -425,7 +425,7 @@ sub tbresi {
 			}
 
    print OUT "$pos\t$ref\t$type\t$allel\t$cov_forward\t$cov_reverse\t$qual_20\t$freq1\t$coverage\t$subs\t$gene\t$gene_name\t$annotation\t$region\t$warning\t$better_res\t$benigninfo\t$better_res_change\t$res_comment\n";
-   print $logprint "<INFO>\t",timer(),"\tFinished calling resistance for $variant_file!\n";
+   
 			}
    close (IN);
    close (OUT);
@@ -433,6 +433,7 @@ sub tbresi {
    $res_hash           =  {};
    $change_hash        =  {};
 		}
+	print $logprint "<INFO>\t",timer(),"\tFinished calling resistance for $variant_file!\n";
 	}
 }
 
@@ -452,7 +453,11 @@ sub tbresisummary {
 	my $line                     =       {};
 	my @ID                       =       @_;
 	my $outputfile               =       {};
-	
+	my @names                    =       ();
+	my $name                    =       "";
+	my $dim                    =       "";
+	my $antibiotic                    =       "";
+	my $prediction                    =       "";
 
 
 
@@ -552,11 +557,11 @@ sub tbresisummary {
 
 
 sub tbcombinedresi{
-	
-	my $RESI_OUT                   =  shift;
-	my @resisum_files              =  shift;
-	my $output_file                =  "Strain_Resistance.tab";
-	my %check_up;
+   my $logprint                 =      shift;
+   my $RESI_OUT                   =  shift;
+   my @resisum_files              =  shift;
+   my $output_file                =  "Strain_Resistance.tab";
+   my %check_up;
 	
 	if(-f "$RESI_OUT/$output_file") {
       open(IN,"$RESI_OUT/$output_file") || die print $logprint "<ERROR>\t",timer(),"\tCan't open $output_file: TBresi.pm line: ", __LINE__ , " \n";

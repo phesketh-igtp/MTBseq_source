@@ -700,7 +700,7 @@ if($step eq 'TBresi') {
 }
 opendir(CALLDIR,"$CALL_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $CALL_OUT: MTBseq.pl line: ", __LINE__ ," \n";
 opendir(RESIDIR,"$RESI_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $RESI_OUT: MTBseq.pl line: ", __LINE__ ," \n";
-@truecodon_files     =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_cf$lfmicovf\_cr$lfmicovr\_fr$lfmifreq\_ph$lfmiphred20\_outmode[01]${snp_vars}1\.tab$/ && -f "$CALL_OUT/$_"   }  readdir(CALL_DIR);
+@truecodon_files     =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_cf$lfmicovf\_cr$lfmicovr\_fr$lfmifreq\_ph$lfmiphred20\_outmode[01]${snp_vars}1\.tab$/ && -f "$CALL_OUT/$_"   }  readdir(CALLDIR);
 @resi_files        =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_$resi_list_date\_resi.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
 @resisum_files       =  grep { $_ =~ /^\w.*\._resi_summary.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
 closedir(CALLDIR);
@@ -731,7 +731,7 @@ print $logprint "<INFO>\t",timer(),"\tFinished resistance call!\n";
 
 opendir(RESIDIR,"$RESI_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $RESI_OUT: MTBseq.pl line: ", __LINE__ ," \n";
 ####fehlt noch das Datum im Namen der Datein
-@resi_files          =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_resi.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
+@resi_files          =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_$resi_list_date\_resi.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
 @resisum_files       =  grep { $_ =~ /^\w.*\._resi_summary.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
 
 closedir(RESIDIR);
@@ -745,7 +745,7 @@ for(my $i = 0; $i < scalar(@resi_files); $i++) {
    my $tmp        =  $resi_files[$i];
    $tmp           =~ s/\.gatk_position_true-codon-variants\.tab//;
    if(!exists $check_up{$tmp}) {
-      push(@resi_files_new,$esi_files[$i]);
+      push(@resi_files_new,$resi_files[$i]);
    }
 }
 if(scalar(@resi_files_new) == 0) {
@@ -753,10 +753,10 @@ if(scalar(@resi_files_new) == 0) {
    exit 1;
 }
 print $logprint "\n<INFO>\t",timer(),"\tStart resistance call summary...\n";
-tbresisummary ($logprint, $RESI_OUT,$cutoff,$qcutoff,$fcutoff,$pcutoff,$mincutoff,@resi_files_new);
+#tbresisummary ($logprint, $RESI_OUT,$cutoff,$qcutoff,$fcutoff,$pcutoff,$mincutoff,@resi_files_new);
 print $logprint "<INFO>\t",timer(),"\tFinished resistance call summary!\n";
 print $logprint "\n<INFO>\t",timer(),"\tStart combined resistance call summary...\n";
-tbcombinedresi ($logprint, $RESI_OUT,@resisum_files);print $logprint "<INFO>\t",timer(),"\tFinished combined resistance call summary!\n";
+#tbcombinedresi ($logprint, $RESI_OUT,@resisum_files);print $logprint "<INFO>\t",timer(),"\tFinished combined resistance call summary!\n";
 print $logprint "\n<INFO>\t",timer(),"\tFinished combined resistance call summary...\n";
 @truecodon_files     =  ();
 @truecodon_files_new     =  ();
