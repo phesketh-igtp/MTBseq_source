@@ -219,7 +219,7 @@ sub tbresisummary {
 	my $line                     =       {};
 	my @ID                       =       @_;
 	my $outputfile               =       {};
-	
+	my %mutations;
 
 
 
@@ -237,7 +237,7 @@ sub tbresisummary {
 	open(Fout,">$RESI_OUT/${file}_summary.tab") or die "\n\ncannot write output file\n\n\n";    
 	print Fout "SampleID\tLibID\tINH\tFreq_INH\tRMP\tFreq_RMP\tSM\tFreq_SM\tEMB\tFreq_EMB\tPZA\tFreq_PZA\tMFX\tFreq_MFX\tLFX\tFreq_LFX\tCFZ\tFreq_CFZ\tKAN\tFreq_KAN\tAMK\tFreq_AMK\tCPR\tFreq_CPR\tETH/PTH\tFreq_ETH/PTH\tLZD\tFreq_LZD\tBDQ\tFreq_BDQ\tCS\tFreq_CS\tPAS\tFreq_PAS\tDLM\tFreq_DLM\tPrediction\n";
     @ID=split("_",$file);
-    my %mutations;
+    
     open (Fin,"<$RESI_OUT/$resi_file") or die "\n\ncannot open $file\n\n\n";
 	my $R = Statistics::R->new();
        $R->startR;
