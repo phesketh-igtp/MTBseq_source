@@ -745,31 +745,14 @@ if(scalar(@resi_files_new) == 0) {
 print $logprint "\n<INFO>\t",timer(),"\tStart resistance call summary...\n";
 tbresisummary ($logprint, $RESI_OUT,$cutoff,$qcutoff,$fcutoff,$pcutoff,$mincutoff,@resi_files_new);
 print $logprint "<INFO>\t",timer(),"\tFinished resistance call summary!\n";
-opendir(RESIDIR,"$RESI_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $RESI_OUT: MTBseq.pl line: ", __LINE__ ," \n";
-@resi_files          =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_resi.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
-@resisum_files       =  grep { $_ =~ /^\w.*\._resi_summary.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
-closedir(CALLDIR);
-closedir(RESIDIR);
-if(scalar(@truecodon_files) == 0) {
-   print $logprint "\n<ERROR>\t",timer(),"\tNo files to call resistance! Check content of $CALL_OUT!\n";
-   exit 1;
-}
-%check_up         =  map { (my $id = $_) =~ s/\..gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_resi.tab$//; $id => $id; } @resi_files;
-for(my $i = 0; $i < scalar(@truecodon_files); $i++) {
-   my $tmp        =  $truecodon_files[$i];
-   $tmp           =~ s/\.gatk_position_true-codon-variants\.tab//;
-   if(!exists $check_up{$tmp}) {
-      push(@truecodon_files_new,$truecodon_files[$i]);
-   }
-}
-if(scalar(@truecodon_files_new) == 0) {
-   print $logprint "\n<ERROR>\t",timer(),"\tAll resi variant files have been already created from $CALL_OUT!\n";
-   exit 1;
-}
+print $logprint "\n<INFO>\t",timer(),"\tStart combined resistance call summary...\n";
 tbcombinedresi ($logprint, $RESI_OUT,@resisum_files);print $logprint "<INFO>\t",timer(),"\tFinished combined resistance call summary!\n";
+print $logprint "\n<INFO>\t",timer(),"\tFinished combined resistance call summary...\n";
 @truecodon_files     =  ();
 @truecodon_files_new     =  ();
 @resi_files     =  ();
+@resi_files_new     =  ();
+@resisum_files     =  ();
 
 if($continue == 0 && $step ne 'TBfull') { exit 1; }
 

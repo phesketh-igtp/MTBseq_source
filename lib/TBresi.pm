@@ -204,7 +204,8 @@ sub tbresi {
 
 
 sub tbresisummary {
-
+    my $logprint                 =      shift;
+    my $RESI_OUT                 =      shift;
 	my $cutoff                   =      shift;
 	my $qcutoff                  =      shift;
 	my $fcutoff                  =      shift;
@@ -218,13 +219,13 @@ sub tbresisummary {
 	my $line                     =       {};
 	my @ID                       =       @_;
 	my $outputfile               =       {};
-	my %check_up;
+	
 
 
 
   foreach my $resi_file (@resi_files) { #check whether the file is empty
 	  $empty = "full";
-	  my @line_number = read_file("$resi_file");
+	  my @line_number = read_file("$RESI_OUT/$resi_file");
 	  my $lines = @line_number;
 	  if ($lines == 1){
 		  $empty = "empty";
@@ -233,16 +234,16 @@ sub tbresisummary {
 	  
 	$resi_file=~/^(.+).tab/ or die "strange file format: $resi_file\n";
 	my $file=$1;
-	open(Fout,">${file}_summary.tab") or die "\n\ncannot write output file\n\n\n";    
+	open(Fout,">$RESI_OUT/${file}_summary.tab") or die "\n\ncannot write output file\n\n\n";    
 	print Fout "SampleID\tLibID\tINH\tFreq_INH\tRMP\tFreq_RMP\tSM\tFreq_SM\tEMB\tFreq_EMB\tPZA\tFreq_PZA\tMFX\tFreq_MFX\tLFX\tFreq_LFX\tCFZ\tFreq_CFZ\tKAN\tFreq_KAN\tAMK\tFreq_AMK\tCPR\tFreq_CPR\tETH/PTH\tFreq_ETH/PTH\tLZD\tFreq_LZD\tBDQ\tFreq_BDQ\tCS\tFreq_CS\tPAS\tFreq_PAS\tDLM\tFreq_DLM\tPrediction\n";
     @ID=split("_",$file);
     my %mutations;
-    open (Fin,"<$resi_file") or die "\n\ncannot open $file\n\n\n";
+    open (Fin,"<$RESI_OUT/$resi_file") or die "\n\ncannot open $file\n\n\n";
 	my $R = Statistics::R->new();
        $R->startR;
        $R->send('library("readr")');#R-Library for reading in tab-seperated files
         
-       $R->run(qq'table<-read_delim(file="${resi_file}", "\t", escape_double =F, trim_ws=T);'); #Read in Table with resistance-calls 
+       $R->run(qq'table<-read_delim(file="${RESI_OUT}/${resi_file}", "\t", escape_double =F, trim_ws=T);'); #Read in Table with resistance-calls 
        @names=("INH-R (INH)","RIF-R (RMP)","SM-R (SM)","EMB-R (EMB)","PZA-R (PZA)","MFX-R (MFX)","LFX-R (LFX)","CFZ-R (CFZ)","KAN-R (KAN)","AMI-R (AMK)","CAP-R (CPR)","ETH-R (ETH)","LZD-R (LZD)","BDQ-R (BDQ)","CS-R (CS)","PAS-R (PAS)","DEL-R (DEL)");
             foreach $a (@names){#loop over all antibiotics
     
@@ -315,10 +316,14 @@ sub tbresisummary {
     close Fout;
  }
 }
+
+
 sub tbcombinedresi{
-	my $output_file                =  "Strain_Resistance.tab";
+	
 	my $RESI_OUT                   =  shift;
 	my @resisum_files              =  shift;
+	my $output_file                =  "Strain_Resistance.tab";
+	my %check_up;
 	
 	if(-f "$RESI_OUT/$output_file") {
       open(IN,"$RESI_OUT/$output_file") || die print $logprint "<ERROR>\t",timer(),"\tCan't open $output_file: TBresi.pm line: ", __LINE__ , " \n";
@@ -329,6 +334,27 @@ sub tbcombinedresi{
          my @fields     =  split(/\t/);
          $check_up{$fields[1]."_".$fields[2]}   =  $fields[0];
       }
+	 close IN;
    }
+   foreach my $resisum_file (@resisum_files) {
+	   print $logprint "<INFO>\t",timer(),"\t","Start parsing $resisum_file...\n";
+       $resisum_file       =~ /(\S+)\._resi_summary\.tab$/;
+       my $id      =  $1;
+       my @sample  =  split(/_/,$id);
+       # check if strains classification already exists.
+       if(exists $check_up{"\'$sample[0]"."_"."\'$sample[1]"}) {
+         print $logprint "<INFO>\t",timer(),"\t","Skipping $resisum_file. Resistance classification already existing!\n";
+         next;
+      }
+	  
+   open (Fout,">>$RESI_OUT/${output_file}") or die "\n\ncannot open/write $output_file file\n\n\n";
+   open (Fin,"<$RESI_OUT/$resisum_file") or die "\n\ncannot open $resisum_file\n\n\n";
+   
+	my $line = <Fin>; #remove header
+	my $mutations =<Fin>; #store mutation line in a variable
+	print Fout "$mutations";
+	close Fin;
+	close Fout;
+	}
 }
 1;
