@@ -786,12 +786,12 @@ sub parse_variant_infos { # parse infos about resistance and phylo SNPs or inter
    my $logprint         =  shift;
    my $variant_infos    =  shift;
    my $resi_gene        =  shift;
-   my $resi_list_master =  shift;
+   my $resi_list_old =  shift;
    my $int_regions      =  shift;
    my $genes            =  shift;
-   print $logprint ("<INFO>\t",timer(),"\tNo resistance file $resi_list_master. Will skip resistance annotation.\n") unless(-f $resi_list_master);
+   print $logprint ("<INFO>\t",timer(),"\tNo resistance file $resi_list_old. Will skip resistance annotation.\n") unless(-f $resi_list_old);
    print $logprint ("<INFO>\t",timer(),"\tNo regions file $int_regions. Will skip resistance annotation.\n")         unless(-f $int_regions);
-   open(IN,$resi_list_master) || return;
+   open(IN,$resi_list_old) || return;
    # skip header line.
    <IN>;
    while(<IN>) {
@@ -1193,12 +1193,12 @@ sub print_variants { # print a variant file.
          my $cov        =  shift(@values);
          my $subst      =  shift(@values);
          my $gene       =  shift(@values);
-         my $gene_name  =  " ";
+         my $gene_name  =  "-";
          $gene_name     =  $genes->{$gene}->{name}                                      if(exists $genes->{$gene}->{name});
          my $product    =  shift(@values);
-         my $resistance =  " ";
-         my $phylo      =  " ";
-         my $region     =  " ";
+         my $resistance =  "-";
+         my $phylo      =  "-";
+         my $region     =  "-";
          # SNPs annotation.
          $resistance    =  $variant_infos->{$pos}->{$allel1}->{RESI}                if(exists $variant_infos->{$pos}->{$allel1}->{RESI});
          $phylo         =  $variant_infos->{$pos}->{$allel1}->{PHYLO}               if(exists $variant_infos->{$pos}->{$allel1}->{PHYLO});
@@ -2315,10 +2315,10 @@ sub call_variants { # call variants.
             next     if(($snp_vars == 1) && !($type eq "SNP"));
          }
          # gene specific part.
-         my $gene                =  " ";
-         my $gene_type           =  " ";
-         my $product             =  " ";
-         my $substitution        =  " ";
+         my $gene                =  "-";
+         my $gene_type           =  "-";
+         my $product             =  "-";
+         my $substitution        =  "-";
          my $real_substitution   =  0;
          $gene                   =  $annotation->{$pos}        if(exists $annotation->{$pos});
          $gene_type              =  $genes->{$gene}->{type}    if(exists $genes->{$gene}->{type});
