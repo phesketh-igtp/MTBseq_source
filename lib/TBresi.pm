@@ -18,7 +18,7 @@ use File::Slurp;
 
 $VERSION    =  1.0.0;
 @ISA        =  qw(Exporter);
-@EXPORT     =  qw(tbresi, tbresisummary, tbcombinedresi);
+@EXPORT     =  qw(tbresi tbresisummary tbcombinedresi);
 
 sub tbresi {
    # get parameter and input from front-end.
@@ -116,7 +116,7 @@ sub tbresi {
 		if ($variant_file =~ /.*gatk_position_true-codon-variants.*/){
 			(my $out_file = basename($variant_file)) =~ s/\..*$//g;
 			my $output_mode = $1 if ($variant_file) =~/^.*outmode(\d\d\d)/;
-			open(OUT,">","$RESI_OUT/${out_file}.gatk_position_true-codon-variants_outmode${output_mode}_${res_table_date}_res.tsv") or die "\n<ERROR>\t",timer(),"\tUnable to create $${out_file}.gatk_position_true-codon-variants_outmode${output_mode}_${res_table_date}_res.tsv\n";
+			open(OUT,">","$RESI_OUT/${out_file}.gatk_position_true-codon-variants_outmode${output_mode}_${res_table_date}_resi.tab") or die "\n<ERROR>\t",timer(),"\tUnable to create $${out_file}.gatk_position_true-codon-variants_outmode${output_mode}_${res_table_date}_res.tsv\n";
 
 			open (IN, "<", "$CALL_OUT/$variant_file") or die "\n[ERROR]\t",timer(),"\tUnable to open $variant_file\n";
 			my $header = <IN>;
