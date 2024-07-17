@@ -91,7 +91,6 @@ my $threads             =     "";
 my $naming_scheme       =     "";
 my $help                =     "";
 my $opt_version         =     "";
-my $res_table_date      =     "";
 #my $test_run            =     "";
 my $check         =     "";
 
@@ -263,9 +262,9 @@ if($ref eq 'M._tuberculosis_H37Rv_2015-11-13.fasta') {
    $categories          =   "$RealBin/var/cat/MTB_Gene_Categories.txt"                  if($categories eq 'NONE');         # MTBC essential and non-essential genes.
    $basecalib           =   "$RealBin/var/res/MTB_Base_Calibration_List.vcf"            if($basecalib eq 'NONE');          # MTBC base calibration list. Known SNP positions for base call recalibration.
 }
-
-$res_table_date = $1 if ($resi_list_master) =~/^.*(\d\d\d\d.\d\d.\d\d)/;
-#print "$res_table_date\n";
+my $resi_list_date      =     "custom";
+$resi_list_date = $1 if ($resi_list_master) =~/^.*(\d\d\d\d.\d\d.\d\d)/;
+#print "$resi_list_date\n";
 #print "$resi_list_master\n";
 
 # create log file and log on screen if --quiet is unset.
@@ -703,8 +702,8 @@ opendir(CALLDIR,"$CALL_OUT")      || die print $logprint "<ERROR>\t",timer(),"\t
 opendir(RESIDIR,"$RESI_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $RESI_OUT: MTBseq.pl line: ", __LINE__ ," \n";
 
 @truecodon_files     =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_cf$lfmicovf\_cr$lfmicovr\_fr$lfmifreq\_ph$lfmiphred20\_outmode[01]${snp_vars}1\.tab$/ && -f "$CALL_OUT/$_"   }  readdir(CALLDIR);
-@resi_files          =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_resi.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
-#@resisum_files       =  grep { $_ =~ /^\w.*\._resi_summary.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
+@resi_files        =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_$resi_list_date\_resi.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
+@resisum_files       =  grep { $_ =~ /^\w.*\._resi_summary.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
 
 closedir(CALLDIR);
 closedir(RESIDIR);
@@ -730,14 +729,16 @@ foreach my $truecodon_file (sort { $a cmp $b } @truecodon_files_new) {
 }
 print $logprint "\n<INFO>\t",timer(),"\tStart resistance call...\n";
 
-#tbresi($logprint,$VAR_dir,$CALL_OUT,$RESI_OUT,$date_string,$resi_list_master,@truecodon_files_new);
+tbresi($logprint,$VAR_dir,$CALL_OUT,$RESI_OUT,$date_string,$resi_list_master,$resi_list_date,@truecodon_files_new);
 
 print $logprint "<INFO>\t",timer(),"\tFinished resistance call!\n";
 
 opendir(RESIDIR,"$RESI_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $RESI_OUT: MTBseq.pl line: ", __LINE__ ," \n";
 ####fehlt noch das Datum im Namen der Datein
-@resi_files          =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_outmode[01]${snp_vars}1${res_table_date}\_resi.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
-@resisum_files       =  grep { $_ =~ /^\w.*\._resi_summary\.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
+
+@resi_files          =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_$resi_list_date\_resi.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
+@resisum_files       =  grep { $_ =~ /^\w.*\._resi_summary.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
+
 
 closedir(RESIDIR);
 if(scalar(@resi_files) == 0) {
@@ -750,7 +751,7 @@ for(my $i = 0; $i < scalar(@resi_files); $i++) {
    my $tmp        =  $resi_files[$i];
    $tmp           =~ s/\.gatk_position_true-codon-variants\.tab//;
    if(!exists $check_up{$tmp}) {
-      push(@resi_files_new,$esi_files[$i]);
+      push(@resi_files_new,$resi_files[$i]);
    }
 }
 if(scalar(@resi_files_new) == 0) {
@@ -768,6 +769,7 @@ if(scalar(@resisum_files) == 0) {
    exit 1;
 }
 print $logprint "\n<INFO>\t",timer(),"\tStart combined resistance call summary...\n";
+
 foreach my $resisum_file (sort { $a cmp $b } @resisum_files) {
    print $logprint "<INFO>\t",timer(),"\t$resisum_file\n";
 }
@@ -775,7 +777,7 @@ foreach my $resisum_file (sort { $a cmp $b } @resisum_files) {
 
 tbcombinedresi ($logprint, $RESI_OUT,@resisum_files);
 print $logprint "<INFO>\t",timer(),"\tFinished combined resistance call summary!\n";
-print $logprint "\n<INFO>\t",timer(),"\tFinished combined resistance call summary...\n";
+
 @truecodon_files     =  ();
 @truecodon_files_new     =  ();
 @resi_files     =  ();

@@ -18,7 +18,10 @@ use File::Slurp;
 
 $VERSION    =  1.0.0;
 @ISA        =  qw(Exporter);
-@EXPORT     =  qw(tbresi tbresisummary tbcombinedresi);
+@EXPORT     =  qw(tbresi
+                  tbresisummary
+                  tbcombinedresi);
+
 
 sub tbresi {
    # get parameter and input from front-end.
@@ -28,6 +31,7 @@ sub tbresi {
    my $RESI_OUT                  =  shift;
    my $date_string               =  shift;
    my $resi_list_master          =  shift;
+   my $resi_list_date            =  shift;
    my @truecodon_files           =  @_;
    my $minion                    =     "";
    my $res_hash = {};
@@ -35,10 +39,7 @@ sub tbresi {
    
    print $logprint ("<INFO>\t",timer(),"\tNo resistance file $resi_list_master. Will skip resistance annotation.\n") unless(-f $resi_list_master);
    #if($resi_list_master            eq   ''||"NONE"   ) { die "\n[ERROR]\t",timer(),"\tNeed to provide a resistance file. Use --help for usage information\n";}
-   my $res_table_date = "custom";
-   $res_table_date = $1 if ($resi_list_master) =~/^.*(\d\d\d\d.\d\d.\d\d)/;
-   #print "$res_table_date\n";
-   
+
    ###aminoacid changes###
    my %codon = ('Ser'=>'S',
 			'Phe'=>'F',
@@ -116,7 +117,9 @@ sub tbresi {
 		if ($variant_file =~ /.*gatk_position_true-codon-variants.*/){
 			(my $out_file = basename($variant_file)) =~ s/\..*$//g;
 			my $output_mode = $1 if ($variant_file) =~/^.*outmode(\d\d\d)/;
-			open(OUT,">","$RESI_OUT/${out_file}.gatk_position_true-codon-variants_outmode${output_mode}_${res_table_date}_resi.tab") or die "\n<ERROR>\t",timer(),"\tUnable to create $${out_file}.gatk_position_true-codon-variants_outmode${output_mode}_${res_table_date}_res.tsv\n";
+
+			open(OUT,">","$RESI_OUT/${out_file}.gatk_position_true-codon-variants_outmode${output_mode}_${resi_list_date}_resi.tab") or die "\n<ERROR>\t",timer(),"\tUnable to create $${out_file}.gatk_position_true-codon-variants_outmode${output_mode}_${resi_list_date}_resi.tab\n";
+
 
 			open (IN, "<", "$CALL_OUT/$variant_file") or die "\n[ERROR]\t",timer(),"\tUnable to open $variant_file\n";
 			my $header = <IN>;
@@ -425,7 +428,7 @@ sub tbresi {
 			}
 
    print OUT "$pos\t$ref\t$type\t$allel\t$cov_forward\t$cov_reverse\t$qual_20\t$freq1\t$coverage\t$subs\t$gene\t$gene_name\t$annotation\t$region\t$warning\t$better_res\t$benigninfo\t$better_res_change\t$res_comment\n";
-
+   
 			}
    close (IN);
    close (OUT);
@@ -433,6 +436,7 @@ sub tbresi {
    $res_hash           =  {};
    $change_hash        =  {};
 		}
+	print $logprint "<INFO>\t",timer(),"\tFinished calling resistance for $variant_file!\n";
 	}
 }
 
@@ -452,6 +456,11 @@ sub tbresisummary {
 	my $line                     =       {};
 	my @ID                       =       @_;
 	my $outputfile               =       {};
+	my @names                    =       ();
+	my $name                    =       "";
+	my $dim                    =       "";
+	my $antibiotic                    =       "";
+	my $prediction                    =       "";
 	my %mutations;
 
 
@@ -552,11 +561,11 @@ sub tbresisummary {
 
 
 sub tbcombinedresi{
-	
-	my $RESI_OUT                   =  shift;
-	my @resisum_files              =  shift;
-	my $output_file                =  "Strain_Resistance.tab";
-	my %check_up;
+   my $logprint                 =      shift;
+   my $RESI_OUT                   =  shift;
+   my @resisum_files              =  shift;
+   my $output_file                =  "Strain_Resistance.tab";
+   my %check_up;
 	
 	if(-f "$RESI_OUT/$output_file") {
       open(IN,"$RESI_OUT/$output_file") || die print $logprint "<ERROR>\t",timer(),"\tCan't open $output_file: TBresi.pm line: ", __LINE__ , " \n";
