@@ -561,11 +561,20 @@ sub tbresisummary {
 
 
 sub tbcombinedresi{
-   my $logprint                 =      shift;
-   my $RESI_OUT                   =  shift;
-   my @resisum_files              =  shift;
+	# get parameter and input from front-end.
+   my $logprint                   =      shift;
+   my $RESI_OUT                   =      shift;
+   my $resi_list_date             =      shift;
+   my @resisum_files              =      shift;
+   my $resisum_file               =      {};
+   my $id                         =      {};
+   my @sample                     =      @_;
    my $output_file                =  "Strain_Resistance.tab";
    my %check_up;
+	
+	opendir(RESIDIR,"$RESI_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $RESI_OUT: MTBseq.pl line: ", __LINE__ ," \n";
+	@resisum_files       =  grep { $_ =~ /^\w.*\_${resi_list_date}\_resi\_summary.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
+
 	
 	if(-f "$RESI_OUT/$output_file") {
       open(IN,"$RESI_OUT/$output_file") || die print $logprint "<ERROR>\t",timer(),"\tCan't open $output_file: TBresi.pm line: ", __LINE__ , " \n";
@@ -574,29 +583,45 @@ sub tbcombinedresi{
          my $line       =  $_;
          $line          =~ s/\015?\012?$//;
          my @fields     =  split(/\t/);
-         $check_up{$fields[1]."_".$fields[2]}   =  $fields[0];
+         $check_up{$fields[0]."_".$fields[1]}   =  1;
       }
+	
 	 close IN;
    }
-   foreach my $resisum_file (@resisum_files) {
-	   print $logprint "<INFO>\t",timer(),"\t","Start parsing $resisum_file...\n";
-       $resisum_file       =~ /(\S+)\._resi_summary\.tab$/;
-       my $id      =  $1;
-       my @sample  =  split(/_/,$id);
-       # check if strains classification already exists.
-       if(exists $check_up{"\'$sample[0]"."_"."\'$sample[1]"}) {
+  unless(-f "$RESI_OUT/$output_file") {
+      print $logprint "<INFO>\t",timer(),"\t","Start writing $output_file...\n";
+      open (Fout,">>$RESI_OUT/${output_file}") or die "\n\ncannot open/write $output_file file\n\n\n";
+      print Fout "SampleID\tLibID\tINH\tFreq_INH\tRMP\tFreq_RMP\tSM\tFreq_SM\tEMB\tFreq_EMB\tPZA\tFreq_PZA\tMFX\tFreq_MFX\tLFX\tFreq_LFX\tCFZ\tFreq_CFZ\tKAN\tFreq_KAN\tAMK\tFreq_AMK\tCPR\tFreq_CPR\tETH/PTH\tFreq_ETH/PTH\tLZD\tFreq_LZD\tBDQ\tFreq_BDQ\tCS\tFreq_CS\tPAS\tFreq_PAS\tDLM\tFreq_DLM\tPrediction\n";
+      close Fout;
+      print $logprint "<INFO>\t",timer(),"\t","Finished writing $output_file!\n";
+   }
+   open (Fout,">>$RESI_OUT/${output_file}") or die "\n\ncannot open/write $output_file file\n\n\n";
+   
+   foreach my $resisum_file (sort { $a cmp $b } @resisum_files) {
+	print $logprint "<INFO>\t",timer(),"\t","Start parsing $resisum_file...\n";
+    $resisum_file       =~ /(\S+)\_resi_summary\.tab$/;
+    my $id      =  $1;
+    my @sample  =  split(/_/,$id);
+	   
+       # check if resistance summary already exists.
+    if(exists $check_up{"$sample[0]"."_"."$sample[1]"}) {
          print $logprint "<INFO>\t",timer(),"\t","Skipping $resisum_file. Resistance classification already existing!\n";
          next;
-      }
+		}
 	  
-   open (Fout,">>$RESI_OUT/${output_file}") or die "\n\ncannot open/write $output_file file\n\n\n";
-   open (Fin,"<$RESI_OUT/$resisum_file") or die "\n\ncannot open $resisum_file\n\n\n";
+    
+    open (Fin,"<$RESI_OUT/$resisum_file") or die "\n\ncannot open $resisum_file\n\n\n";
    
 	my $line = <Fin>; #remove header
 	my $mutations =<Fin>; #store mutation line in a variable
 	print Fout "$mutations";
 	close Fin;
-	close Fout;
+	print $logprint "<INFO>\t",timer(),"\t","Finished writing resistance result for $id!\n";
+    $mutations         =  {};
+	$id                =  {};
 	}
+	
+	undef(%check_up);
+	close Fout;
 }
 1;

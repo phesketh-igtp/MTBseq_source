@@ -703,14 +703,15 @@ opendir(RESIDIR,"$RESI_OUT")      || die print $logprint "<ERROR>\t",timer(),"\t
 
 @truecodon_files     =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_cf$lfmicovf\_cr$lfmicovr\_fr$lfmifreq\_ph$lfmiphred20\_outmode[01]${snp_vars}1\.tab$/ && -f "$CALL_OUT/$_"   }  readdir(CALLDIR);
 @resi_files        =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_$resi_list_date\_resi.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
-@resisum_files       =  grep { $_ =~ /^\w.*\._resi_summary.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
+
+
 
 closedir(CALLDIR);
 closedir(RESIDIR);
-if(scalar(@truecodon_files) == 0) {
-   print $logprint "\n<ERROR>\t",timer(),"\tNo files to call resistance! Check content of $CALL_OUT!\n";
-   exit 1;
-}
+#if(scalar(@truecodon_files) == 0) {
+#   print $logprint "\n<ERROR>\t",timer(),"\tNo files to call resistance! Check content of $CALL_OUT!\n";
+#   exit 1;
+#}
 %check_up         =  map { (my $id = $_) =~ s/\..gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_resi.tab$//; $id => $id; } @resi_files;
 for(my $i = 0; $i < scalar(@truecodon_files); $i++) {
    my $tmp        =  $truecodon_files[$i];
@@ -719,10 +720,10 @@ for(my $i = 0; $i < scalar(@truecodon_files); $i++) {
       push(@truecodon_files_new,$truecodon_files[$i]);
    }
 }
-if(scalar(@truecodon_files_new) == 0) {
-   print $logprint "\n<ERROR>\t",timer(),"\tAll resi variant files have been already created from $CALL_OUT!\n";
-   exit 1;
-}
+#if(scalar(@truecodon_files_new) == 0) {
+#   print $logprint "\n<ERROR>\t",timer(),"\tAll resi variant files have been already created from $CALL_OUT!\n";
+#   exit 1;
+#}
 print $logprint "\n<INFO>\t",timer(),"\tCalling resistance:\n";
 foreach my $truecodon_file (sort { $a cmp $b } @truecodon_files_new) {
    print $logprint "<INFO>\t",timer(),"\t$truecodon_file\n";
@@ -734,19 +735,17 @@ tbresi($logprint,$VAR_dir,$CALL_OUT,$RESI_OUT,$date_string,$resi_list_master,$re
 print $logprint "<INFO>\t",timer(),"\tFinished resistance call!\n";
 
 opendir(RESIDIR,"$RESI_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $RESI_OUT: MTBseq.pl line: ", __LINE__ ," \n";
-####fehlt noch das Datum im Namen der Datein
 
-@resi_files          =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_$resi_list_date\_resi.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
-@resisum_files       =  grep { $_ =~ /^\w.*\._resi_summary.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
+@resisum_files       =  grep { $_ =~ /^\w.*\_${resi_list_date}\_resi\_summary.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
 
 
 closedir(RESIDIR);
-if(scalar(@resi_files) == 0) {
-   print $logprint "\n<ERROR>\t",timer(),"\tNo files to call resistance! Check content of $CALL_OUT!\n";
-   exit 1;
-}
-#hier auch das Datum
-%check_up         =  map { (my $id = $_) =~ s/\..gatk_position_true-codon-variants_outmode[01]${snp_vars}1${res_table_date}\_resi.tab$//; $id => $id; } @resi_files;
+#if(scalar(@resi_files) == 0) {
+#   print $logprint "\n<ERROR>\t",timer(),"\tNo files to call resistance! Check content of $CALL_OUT!\n";
+#   exit 1;
+#}
+
+%check_up         =  map { (my $id = $_) =~ s/\..gatk_position_true-codon-variants_outmode[01]${snp_vars}1${resi_list_date}\_resi.tab$//; $id => $id; } @resi_files;
 for(my $i = 0; $i < scalar(@resi_files); $i++) {
    my $tmp        =  $resi_files[$i];
    $tmp           =~ s/\.gatk_position_true-codon-variants\.tab//;
@@ -754,28 +753,29 @@ for(my $i = 0; $i < scalar(@resi_files); $i++) {
       push(@resi_files_new,$resi_files[$i]);
    }
 }
-if(scalar(@resi_files_new) == 0) {
-   print $logprint "\n<ERROR>\t",timer(),"\tAll resi variant files have been already created from $CALL_OUT!\n";
-   exit 1;
-}
+#if(scalar(@resi_files_new) == 0) {
+#   print $logprint "\n<ERROR>\t",timer(),"\tAll resi variant files have been already created from $RESI_OUT!\n";
+#   exit 1;
+#}
 print $logprint "\n<INFO>\t",timer(),"\tStart resistance call summary...\n";
 #tbresisummary ($logprint, $RESI_OUT,$cutoff,$qcutoff,$fcutoff,$pcutoff,$mincutoff,@resi_files_new);
 print $logprint "<INFO>\t",timer(),"\tFinished resistance call summary!\n";
+
 opendir(RESIDIR,"$RESI_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $RESI_OUT: MTBseq.pl line: ", __LINE__ ," \n";
-@resisum__files     =  grep { $_ =~ /^\w.*\._resi_summary\.tab$/ && -f "$RESI_OUT/$_" } readdir(RESIDIR);
+
 closedir(RESIDIR);
-if(scalar(@resisum_files) == 0) {
-   print $logprint "\n<ERROR>\t",timer(),"\tNo files to call strains! Check content of $RESI_OUT!\n";
-   exit 1;
-}
+#if(scalar(@resisum_files) == 0) {
+#   print $logprint "\n<ERROR>\t",timer(),"\tNo files to call resistance summary! Check content of $RESI_OUT!\n";
+#   exit 1;
+#}
 print $logprint "\n<INFO>\t",timer(),"\tStart combined resistance call summary...\n";
 
-foreach my $resisum_file (sort { $a cmp $b } @resisum_files) {
-   print $logprint "<INFO>\t",timer(),"\t$resisum_file\n";
-}
+#foreach my $file (sort { $a cmp $b } @resisum_files) {
+#   print $logprint "<INFO>\t",timer(),"\t$file\n";
+#}
 
 
-tbcombinedresi ($logprint, $RESI_OUT,@resisum_files);
+tbcombinedresi ($logprint, $RESI_OUT, $resi_list_date, @resisum_files);
 print $logprint "<INFO>\t",timer(),"\tFinished combined resistance call summary!\n";
 
 @truecodon_files     =  ();
