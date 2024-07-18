@@ -8,7 +8,7 @@ use TBtools;
 use Exporter;
 use vars qw($VERSION @ISA @EXPORT);
 
-$VERSION =  1.1.0;
+$VERSION =  2.0.0;
 @ISA     =  qw(Exporter);
 @EXPORT  =  qw(tbvariants);
 
@@ -57,6 +57,7 @@ sub tbvariants {
       my $param_string     =  "cf" . "$micovf" . "_cr" . "$micovr" . "_fr" . "$mifreq" . "_ph" . "$miphred20" . "_outmode" . "$output_mode";
       my $variants_file    =  "$id" . "_position_variants_" . $param_string . ".tab";
       my $uncovered_file   =  "$id" . "_position_uncovered_" . $param_string . ".tab";
+      my $true_codon_variants_file = "$id" . "_position_true-codon-variants_" . $param_string . ".tab";
       # parse position tables, call variants, make statistics, and calculate exchanges.
       print $logprint "<INFO>\t",timer(),"\tStart parsing $file...\n";
       parse_position_table($logprint,$POS_OUT,$file,$micovf,$micovr,$miphred20,$mifreq,$position_table);
@@ -72,6 +73,11 @@ sub tbvariants {
       print_variants($CALL_OUT,$variants,$variant_infos,$resi_gene,$variants_file,$uncovered_file,$genes);
       $variants            =  {};
       print $logprint "<INFO>\t",timer(),"\tPrinting finished!\n";
+      print $logprint "<INFO>\t",timer(),"\tCalling and printing true codon variants:\n";
+      print $logprint "<INFO>\t",timer(),"\t$true_codon_variants_file\n";
+      #call_true_codon($CALL_OUT,$true_codon_variants_file, $variants_file);
+      parse_input_multi_codon($CALL_OUT,$true_codon_variants_file, $variants_file);
+      print $logprint "<INFO>\t",timer(),"\tTrue codon finished!\n";
    }
    @pos_files        =  ();
    $annotation       =  {};

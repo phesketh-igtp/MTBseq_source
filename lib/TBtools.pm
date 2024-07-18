@@ -4,14 +4,21 @@ package TBtools;
 
 use strict;
 use warnings;
+no warnings "numeric";
+no warnings "uninitialized";
+use 5.010;
+use Data::Dumper;
+use IO::Handle;
+use Getopt::Std;
+use File::Basename;
 use File::Copy;
-use List::Util qw(max);
+use List::Util qw(min max);
 use Statistics::Basic qw(median mean);
 use MCE;
 use Exporter;
 use vars qw($VERSION @ISA @EXPORT);
 
-$VERSION    =  1.1.0;
+$VERSION    =  2.0.0;
 @ISA        =  qw(Exporter);
 @EXPORT     =  qw(parse_reference
                   parse_fasta
@@ -21,6 +28,7 @@ $VERSION    =  1.1.0;
                   parse_variant_infos
                   parse_categories
                   parse_variants
+                  parse_input_multi_codon
                   parse_amend_table
                   parse_classification
                   print_variants
@@ -41,6 +49,7 @@ $VERSION    =  1.1.0;
                   filter_wlength
                   build_matrix
                   call_variants
+                  call_true_codon
                   call_groups
                   translate_homolka2coll
                   translate_coll2homolka
@@ -973,8 +982,6 @@ sub parse_variants { # parse a variant file.
       $strain->{$pos.$index.$id}       =  @values;
    }
 }
-
-
 
 sub parse_amend_table { # parse an amended joint variant table.
    my $logprint               =  shift;
@@ -2405,7 +2412,686 @@ sub call_variants { # call variants.
    }
 }
 
+# sub call_true_codon{
+#   my $CALL_OUT                 = shift;
+#   my $true_codon_variants_file = shift;
+#   my $variants_file            = shift;
+#   my $header  =  "#Pos\tInsindex\tRef\tType\tAllel\tCovFor\tCovRev\tQual20\tFreq\tCov";
+#      $header .= "\tSubst\tGene\tGeneName\tProduct\tResistanceSNP\tPhyloSNP\tInterestingRegion\tWarning\n";
+#
+#   open(OUT,">$CALL_OUT/$true_codon_variants_file");
+#   print OUT "$header\n";
+#   parse_input_multi_codon($variants_file);
+#   close OUT;
+# }
 
+sub parse_input_multi_codon {
+  my $CALL_OUT                 = shift;
+  my $true_codon_variants_file = shift;
+  my $input_file               = shift;
+  my $header  =  "#Pos\tInsindex\tRef\tType\tAllel\tCovFor\tCovRev\tQual20\tFreq\tCov";
+     $header .= "\tSubst\tGene\tGeneName\tProduct\tResistanceSNP\tPhyloSNP\tInterestingRegion\tWarning\n";
+
+  #my($input_file) = @_;
+  #my $header      = "";
+	my @lines       = (); #array of arrays, each input array is a line from the input file
+	my @tab         = (); #one array from @lines that will be modified and printed to output
+	my @holder      = (); #an array that is used for formating the Subst column output
+	my @ins_allel   = (); #array of alleles within an insertion
+	my @ins_order   = (); #array which will be used to set the correct order of alleles within an insertion
+	my @del_ref     = (); #array of reference alleles which are removed by a deletion
+	my $complement  = 0;  #Check if the gene is on the complement strand
+	my $count       = 0; 	#counter for each line in the input file
+	my $cc1         = 0;	#First nucleotide in a codon
+	my $cc2         = 0;	#Second nucleotide in a codon
+	my $cc3         = 0;	#Third nucleotide in a codon
+	my $no_change   = 0;  #Ref alleles of the codon
+	my $change      = 0;	#Right side of the Subst column
+	my $del_start   = 0;  #First position of a deletion
+	my $del         = 0;  #Deletion length counter, switch to check whether the loop is already in a deletion
+	my $ins         = 0;  #Insertion length counter, switch to check whether the loop is already in a insertion
+	my $multi       = 0; 	#T/F switch for seeing whether the prior line is already a codon change
+	my $aa          = 0;  #Final amino acid after the multicodon change
+	my $aa_pos      = 0;	#Left side of the Subst column
+	my $tab_line    = 0;  #Line to print OUT
+	my $pos         = 0;	#Position column value when multicodon/ins/del
+	my $ref         = 0;	#Reference -||-
+	my $allel       = 0;	#Allele -||-
+	my $freq        = 0;  #Allele frequency
+	my $covf        = 0;  #Coverage forward
+	my $covr        = 0;  #Coverage reverse
+	my $min_qual    = 0;	#Read quality, default to minimum quality in a multiposition mutations
+	my $freq_diff   = 0;	#Difference between frequencies in multiposition mutations
+	my $freq_max    = 0;	#Max frequency in an InDel
+	my $freq_min    = 0;	#Min frequency in an InDel
+	my $warning     = "-";	#Warning for frequency difference in the variant >25%
+  my %codon = ('TCA'=>'Ser','TCC'=>'Ser','TCG'=>'Ser','TCT'=>'Ser',
+			'TTC'=>'Phe','TTT'=>'Phe',
+			'TTA'=>'Leu','TTG'=>'Leu',
+			'TAC'=>'Tyr','TAT'=>'Tyr',
+			'TAA'=>'_',
+			'TAG'=>'_',
+			'TGC'=>'Cys','TGT'=>'Cys',
+			'TGA'=>'_',
+			'TGG'=>'Trp',
+			'CTA'=>'Leu','CTC'=>'Leu','CTG'=>'Leu','CTT'=>'Leu',
+			'CCA'=>'Pro','CCC'=>'Pro','CCG'=>'Pro','CCT'=>'Pro',
+			'CAC'=>'His','CAT'=>'His',
+			'CAA'=>'Gln','CAG'=>'Gln',
+			'CGA'=>'Arg','CGC'=>'Arg','CGG'=>'Arg','CGT'=>'Arg',
+			'ATA'=>'Ile','ATC'=>'Ile','ATT'=>'Ile',
+			'ATG'=>'Met',
+			'ACA'=>'Thr','ACC'=>'Thr','ACG'=>'Thr','ACT'=>'Thr',
+			'AAC'=>'Asn','AAT'=>'Asn',
+			'AAA'=>'Lys','AAG'=>'Lys',
+			'AGC'=>'Ser','AGT'=>'Ser',
+			'AGA'=>'Arg','AGG'=>'Arg',
+			'GTA'=>'Val','GTC'=>'Val','GTG'=>'Val','GTT'=>'Val',
+			'GCA'=>'Ala','GCC'=>'Ala','GCG'=>'Ala','GCT'=>'Ala',
+			'GAC'=>'Asp','GAT'=>'Asp',
+			'GAA'=>'Glu','GAG'=>'Glu',
+			'GGA'=>'Gly','GGC'=>'Gly','GGG'=>'Gly','GGT'=>'Gly'
+			);
+
+  #open FILE, $input_file;
+  open(OUT,">$CALL_OUT/$true_codon_variants_file");
+  print OUT "$header\n";
+  open (FILE,"<$CALL_OUT/$input_file") or die "Can't open '$input_file': $!";
+  my @content = (<FILE>);
+  chomp @content;
+  close FILE;
+  shift @content;    #remove the header of the file
+
+  foreach my $line (@content) {
+    chomp($line);
+    $line =~ s/\015?\012?$//;
+    next unless $line;
+    $lines[$count] = [split /\t/, $line];
+  	$count += 1;
+  }
+  for my $i (0 .. $#lines) {
+    if ($lines[$i][3] eq "SNP") {
+      $complement = substr $lines[$i][11], -1;
+      if ($complement ne "c"){
+        if (!$multi){
+          my $cc = (split ' ', $lines[$i][10])[1];
+			    if (!$cc) {
+				    @tab = @{$lines[$i]};
+				    $tab_line = join "\t",@tab[0..16],$warning;
+				    print OUT "$tab_line\n";
+				    next;
+			    }
+          $cc = (split '/', substr( $cc, 1, (length($cc) - 2) ))[1];
+          if ((split '',$cc)[2] =~ /[A,T,C,G]/){
+            @tab = @{$lines[$i]};
+				    $tab_line = join "\t",@tab[0..16],$warning;
+				    print OUT "$tab_line\n";
+          } elsif ((split '',$cc)[1] =~ /[A,T,C,G]/){
+              if ($lines[$i][0] == ($lines[$i+1][0]-1) && $lines[$i+1][3] eq "SNP") {
+                $cc2 = (split ' ', $lines[$i][10])[1];
+					      $cc3 = (split ' ', $lines[$i+1][10])[1];
+					      $no_change = (split '/', substr( $cc2, 1, (length($cc2) - 2) ))[0];
+					      $cc1 = substr((split '/', substr( $cc2, 1, (length($cc2) - 2) ))[1],0,-2);
+					      $cc2 = substr((split '/', substr( $cc2, 1, (length($cc2) - 2) ))[1],1,-1);
+					      $cc3 = substr((split '/', substr( $cc3, 1, (length($cc3) - 2) ))[1],2);
+					      $cc = uc(join "",$cc1,$cc2,$cc3);
+					      $change = join "/",$no_change,(join "",$cc1,$cc2,$cc3);
+					      @holder = split "",$change; push @holder, ")"; unshift @holder, "(";
+					      $change = join "", @holder;
+					      $aa_pos = substr((split ' ', $lines[$i][10])[0],0,-3);
+					      $aa = $codon{$cc};
+					      $aa_pos = join "", $aa_pos,$aa;
+					      #$pos = join "-", $lines[$i][0],$lines[$i+1][0]; #start and stop
+					      $pos = $lines[$i][0];
+					      $ref = join "", $lines[$i][2],$lines[$i+1][2];
+					      $allel = join "", $lines[$i][4],$lines[$i+1][4];
+					      $freq_diff = abs($lines[$i][8] - $lines[$i+1][8]);
+					      if ($lines[$i][5] <= $lines[$i+1][5]) {
+						      $covf = $lines[$i][5]
+					      } else {
+						        $covf = $lines[$i+1][5]
+					        }
+					      if ($lines[$i][6] <= $lines[$i+1][6]) {
+						      $covr = $lines[$i][6]
+					      } else {
+						        $covr = $lines[$i+1][6]
+					        }
+					      if ($lines[$i][8] <= $lines[$i+1][8]) {
+						      $freq = $lines[$i][8];
+					      } else {
+						        $freq = $lines[$i+1][8];
+					        }
+					      if ($freq_diff >= 25){
+						      $warning = "Warning";
+					      }
+					      if ($lines[$i][7] <= $lines[$i+1][7]) {
+						      $min_qual = $lines[$i][7];
+					      } else {
+						        $min_qual = $lines[$i+1][7];
+					        }
+					      @tab = @{$lines[$i]};
+					      $tab_line = join "\t", $pos,$tab[1],$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
+					      print OUT "$tab_line\n";
+					      $multi += 1;
+					      $warning = "-";
+              } else {
+                  @tab = @{$lines[$i]};
+                  $tab_line = join "\t", @tab[0..16],$warning;
+                  print OUT "$tab_line\n";
+              }
+          } else {
+              if ($lines[$i][0] == ($lines[$i+1][0]-1) && $lines[$i+1][2] eq "SNP") {
+                if ($lines[$i][0] == ($lines[$i+2][0]-2) && $lines[$i+2][2] eq "SNP") {
+                  $cc1 = (split ' ', $lines[$i][10])[1];
+						      $cc2 = (split ' ', $lines[$i+1][10])[1];
+						      $cc3 = (split ' ', $lines[$i+2][10])[1];
+						      $no_change = (split '/', substr( $cc2, 1, (length($cc2) - 2) ))[0];
+						      $cc1 = substr((split '/', substr( $cc1, 1, (length($cc1) - 2) ))[1],0,-2);
+						      $cc2 = substr((split '/', substr( $cc2, 1, (length($cc2) - 2) ))[1],1,-1);
+						      $cc3 = substr((split '/', substr( $cc3, 1, (length($cc3) - 2) ))[1],2);
+						      $cc = join "",$cc1,$cc2,$cc3;
+						      $change = join "/",$no_change,(join "",$cc1,$cc2,$cc3);
+						      @holder = split "",$change; push @holder, ")"; unshift @holder, "(";
+						      $change = join "", @holder;
+						      $aa_pos = substr((split ' ', $lines[$i][10])[0],0,-3);
+						      $aa = $codon{$cc};
+						      $aa_pos = join "", $aa_pos,$aa;
+						      #$pos = join "-", $lines[$i][0],$lines[$i+2][0]; #start and stop
+						      $pos = $lines[$i][0];
+						      $ref = join "", $lines[$i][2],$lines[$i+1][2],$lines[$i+2][2];
+						      $allel = join "", $lines[$i][4],$lines[$i+1][4],$lines[$i+2][4];
+						      $freq_diff = max($lines[$i][8], $lines[$i+1][8], $lines[$i+2][8]) - min($lines[$i][8], $lines[$i+1][8], $lines[$i+2][8]) ;
+                  if (($lines[$i][5] <= $lines[$i+1][5]) and ($lines[$i][5] <= $lines[$i+2][5])) {
+                    $covf = $lines[$i][5];
+                  } elsif ($lines[$i+1][5] <= $lines[$i+2][5]) {
+                      $covf = $lines[$i+1][5];
+                  } else {
+							        $covf = $lines[$i+2][5];
+						      }
+                  if (($lines[$i][6] <= $lines[$i+1][6]) and ($lines[$i][6] <= $lines[$i+2][6])) {
+							      $covr = $lines[$i][6];
+						      } elsif ($lines[$i+1][6] <= $lines[$i+2][6]) {
+							        $covr = $lines[$i+1][6];
+						      } else {
+							        $covr = $lines[$i+2][6];
+						      }
+                  if (($lines[$i][8] <= $lines[$i+1][8]) and ($lines[$i][8] <= $lines[$i+2][8])) {
+							      $freq = $lines[$i][8];
+						      } elsif ($lines[$i+1][8] <= $lines[$i+2][8]) {
+							        $freq = $lines[$i+1][8];
+						      } else {
+							        $freq = $lines[$i+2][8];
+						      }
+                  if ($freq_diff >= 25) {
+							      $warning = "Warning";
+						      }
+						      if (($lines[$i][7] <= $lines[$i+1][7]) and ($lines[$i][7] <= $lines[$i+2][7])) {
+							      $min_qual = $lines[$i][7];
+						      } elsif ($lines[$i+1][7] <= $lines[$i+2][7]) {
+							        $min_qual = $lines[$i+1][7];
+						      } else {
+							        $min_qual = $lines[$i+2][7];
+						      }
+                  @tab = @{$lines[$i]};
+						      $tab_line = join "\t", $pos,$tab[1],$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
+						      print OUT "$tab_line\n";
+						      $multi += 1;
+						      $warning = "-";
+              } else {
+                  $cc1 = (split ' ', $lines[$i][10])[1];
+                  $cc2 = (split ' ', $lines[$i+1][10])[1];
+                  $cc3 = (split ' ', $lines[$i+1][10])[1];
+                  $no_change = (split '/', substr( $cc2, 1, (length($cc2) - 2) ))[0];
+                  $cc1 = substr((split '/', substr( $cc1, 1, (length($cc1) - 2) ))[1],0,-2);
+                  $cc2 = substr((split '/', substr( $cc2, 1, (length($cc2) - 2) ))[1],1,-1);
+                  $cc3 = substr((split '/', substr( $cc3, 1, (length($cc3) - 2) ))[1],2);
+                  $cc = uc(join "",$cc1,$cc2,$cc3);
+                  $change = join "/",$no_change,(join "",$cc1,$cc2,$cc3);
+                  @holder = split "",$change; push @holder, ")"; unshift @holder, "(";
+                  $change = join "", @holder;
+                  $aa_pos = substr((split ' ', $lines[$i][10])[0],0,-3);
+                  $aa = $codon{$cc};
+                  $aa_pos = join "", $aa_pos,$aa;
+                  #$pos = join "-", $lines[$i][0],$lines[$i+1][0]; #start and stop
+                  $pos = $lines[$i][0];
+                  $ref = join "", $lines[$i][2],$lines[$i+1][2];
+                  $allel = join "", $lines[$i][4],$lines[$i+1][4];
+                  $freq_diff = abs($lines[$i][8] - $lines[$i+1][8]);
+                  if ($lines[$i][5] <= $lines[$i+1][5]) {
+							      $covf = $lines[$i][5];
+						      } else {
+							        $covf = $lines[$i+1][5];
+						      }
+						      if ($lines[$i][6] <= $lines[$i+1][6]) {
+							      $covr = $lines[$i][6];
+						      } else {
+							        $covr = $lines[$i+1][6];
+						      }
+						      if ($lines[$i][8] <= $lines[$i+1][8]) {
+							      $freq = $lines[$i][8];
+						      } else {
+							        $freq = $lines[$i+1][8];
+						      }
+                  if ($freq_diff >= 25) {
+							      $warning = "Warning";
+						      }
+						      if ($lines[$i][7] <= $lines[$i+1][7]) {
+							      $min_qual = $lines[$i][7];
+						      } else {
+							        $min_qual = $lines[$i+1][7];
+						      }
+                  @tab = @{$lines[$i]};
+						      $tab_line = join "\t", $pos,$tab[1],$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
+						      print OUT "$tab_line\n";
+						      $multi += 1;
+						      $warning = "-";
+              }
+          } elsif ($lines[$i][0] == ($lines[$i+1][0]-2) && $lines[$i+1][2] eq "SNP") { #if AaA codon type print it out and set the counter to skip the next iteration
+              $cc1 = (split ' ', $lines[$i][10])[1];
+              $cc2 = (split ' ', $lines[$i][10])[1];
+              $cc3 = (split ' ', $lines[$i+1][10])[1];
+              $no_change = (split '/', substr( $cc1, 1, (length($cc1) - 2) ))[0];
+              $cc1 = substr((split '/', substr( $cc1, 1, (length($cc1) - 2) ))[1],0,-2);
+              $cc2 = substr((split '/', substr( $cc2, 1, (length($cc2) - 2) ))[1],1,-1);
+              $cc3 = substr((split '/', substr( $cc3, 1, (length($cc3) - 2) ))[1],2);
+              $cc = uc(join "",$cc1,$cc2,$cc3);
+              $change = join "/",$no_change,(join "",$cc1,$cc2,$cc3);
+              @holder = split "",$change; push @holder, ")"; unshift @holder, "(";
+              $change = join "", @holder;
+              $aa_pos = substr((split ' ', $lines[$i][10])[0],0,-3);
+              $aa = $codon{$cc};
+              $aa_pos = join "", $aa_pos,$aa;
+              #$pos = join "-", $lines[$i][0],$lines[$i+1][0]; #start and stop
+              $pos = $lines[$i][0];
+              $ref = join "", $lines[$i][2],$lines[$i+1][2];
+              $allel = join "", $lines[$i][4],$lines[$i+1][4];
+              $freq_diff = abs($lines[$i][8] - $lines[$i+1][8]);
+              if ($lines[$i][5] <= $lines[$i+1][5]) {
+							  $covf = $lines[$i][5];
+						  } else {
+							    $covf = $lines[$i+1][5];
+						  }
+						  if ($lines[$i][6] <= $lines[$i+1][6]) {
+							  $covr = $lines[$i][6];
+						  } else {
+							    $covr = $lines[$i+1][6];
+						  }
+						  if ($lines[$i][8] <= $lines[$i+1][8]) {
+							  $freq = $lines[$i][8];
+						  } else {
+							    $freq = $lines[$i+1][8];
+						  }
+              if ($freq_diff >= 25) {
+							  $warning = "Warning";
+						  }
+						  if ($lines[$i][7] <= $lines[$i+1][7]) {
+							  $min_qual = $lines[$i][7];
+						  } else {
+							    $min_qual = $lines[$i+1][7];
+						  }
+              @tab = @{$lines[$i]};
+						  $tab_line = join "\t", $pos,$tab[1],$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
+						  print OUT "$tab_line\n";
+						  $multi += 1;
+              $warning = "-";
+          } else { #if Aaa codon type print it out
+              @tab = @{$lines[$i]};
+              $tab_line = join "\t", @tab[0..16],$warning;
+              print OUT "$tab_line\n";
+          }
+        }
+      } else {
+			    if (($lines[$i][0] == ($lines[$i+1][0]-1))
+			    and (substr((split ' ', $lines[$i][10])[0],0,-3) eq substr((split ' ', $lines[$i+1][10])[0],0,-3))) { #check if in a middle of multi change codon and skip it
+				    next
+			  } else {																								  #set the multi codon change to 0 when moving onto next one
+				    $multi = 0;
+			  }
+		  }
+    } else {                                                      #complement SNPs basically reverse the previous loops
+        if (!$multi) {                                            #check to see whether we are looping within a multichange codon
+          my $cc = (split ' ', $lines[$i][10])[1];
+			    if (!$cc) {
+            @tab = @{$lines[$i]};
+				    $tab_line = join "\t",@tab[0..16],$warning;
+				    print OUT "$tab_line\n";
+				    next;
+          }
+          $cc = (split '/', substr( $cc, 1, (length($cc) - 2) ))[1];
+			    if ((split '',$cc)[0] =~ /[A,T,C,G]/) {                 # if Aaa codon type print it out
+            @tab = @{$lines[$i]};
+            $tab_line = join "\t",@tab[0..16],$warning;
+            print OUT "$tab_line\n";
+          } elsif ((split '',$cc)[1] =~ /[A,T,C,G]/) {
+              if ($lines[$i][0] == ($lines[$i+1][0]-1) && $lines[$i+1][2] eq "SNP") {                             #if AAa codon type print it out and set the counter to skip the next iteration
+                $cc2 = (split ' ', $lines[$i][10])[1];
+                $cc1 = (split ' ', $lines[$i+1][10])[1];
+                $no_change = (split '/', substr( $cc2, 1, (length($cc2) - 2) ))[0];
+                $cc3 = substr((split '/', substr( $cc2, 1, (length($cc2) - 2) ))[1],2);
+                $cc1 = substr((split '/', substr( $cc1, 1, (length($cc2) - 2) ))[1],0,-2);
+                $cc2 = substr((split '/', substr( $cc2, 1, (length($cc2) - 2) ))[1],1,-1);
+                $cc = uc(join "",$cc1,$cc2,$cc3);
+                $change = join "/",$no_change,(join "",$cc1,$cc2,$cc3);
+                @holder = split "",$change; push @holder, ")"; unshift @holder, "(";
+                $change = join "", @holder;
+                $aa_pos = substr((split ' ', $lines[$i][10])[0],0,-3);
+                $aa = $codon{$cc};
+                $aa_pos = join "", $aa_pos,$aa;
+                #$pos = join "-", $lines[$i][0],$lines[$i+1][0]; #start and stop
+                $pos = $lines[$i][0];
+                $ref = join "", $lines[$i][2],$lines[$i+1][2];
+                $allel = join "", $lines[$i][4],$lines[$i+1][4];
+                $freq_diff = abs($lines[$i][8] - $lines[$i+1][8]);
+                if ($lines[$i][5] <= $lines[$i+1][5]) {
+                  $covf = $lines[$i][5];
+                } else {
+                    $covf = $lines[$i+1][5];
+                  }
+                if ($lines[$i][6] <= $lines[$i+1][6]) {
+                  $covr = $lines[$i][6];
+                } else {
+                    $covr = $lines[$i+1][6];
+                }
+                if ($lines[$i][8] <= $lines[$i+1][8]) {
+                  $freq = $lines[$i][8];
+                } else {
+                    $freq = $lines[$i+1][8];
+                }
+                if ($freq_diff >= 25){
+						      $warning = "Warning";
+						    }
+					      if ($lines[$i][7] <= $lines[$i+1][7]) {
+						      $min_qual = $lines[$i][7];
+					      } else {
+						        $min_qual = $lines[$i+1][7];
+					      }
+                @tab = @{$lines[$i]};
+                $tab_line = join "\t", $pos,$tab[1],$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
+                print OUT "$tab_line\n";
+                $multi += 1;
+                $warning = "-";
+              } else {																					  #if aAa codon type print it out
+					        @tab = @{$lines[$i]};
+					        $tab_line = join "\t", @tab[0..16],$warning;
+					        print OUT "$tab_line\n";
+				      }
+          } else {
+              if ($lines[$i][0] == ($lines[$i+1][0]-1) && $lines[$i+1][2] eq "SNP") {   #.AA
+                if ($lines[$i][0] == ($lines[$i+2][0]-2) && $lines[$i+2][2] eq "SNP") { #if AAA codon type print it out and set the counter to skip the next iteration
+                  $cc3 = (split ' ', $lines[$i][10])[1];
+                  $cc2 = (split ' ', $lines[$i+1][10])[1];
+                  $cc1 = (split ' ', $lines[$i+2][10])[1];
+                  $no_change = (split '/', substr( $cc2, 1, (length($cc2) - 2) ))[0];
+                  $cc1 = substr((split '/', substr( $cc1, 1, (length($cc1) - 2) ))[1],0,-2);
+                  $cc2 = substr((split '/', substr( $cc2, 1, (length($cc2) - 2) ))[1],1,-1);
+                  $cc3 = substr((split '/', substr( $cc3, 1, (length($cc3) - 2) ))[1],2);
+                  $cc = join "",$cc1,$cc2,$cc3;
+                  $change = join "/",$no_change,(join "",$cc1,$cc2,$cc3);
+                  @holder = split "",$change; push @holder, ")"; unshift @holder, "(";
+                  $change = join "", @holder;
+                  $aa_pos = substr((split ' ', $lines[$i][10])[0],0,-3);
+                  $aa = $codon{$cc};
+                  $aa_pos = join "", $aa_pos,$aa;
+                  #$pos = join "-", $lines[$i][0],$lines[$i+2][0]; #start and stop
+                  $pos = $lines[$i][0];
+                  $ref = join "", $lines[$i][2],$lines[$i+1][2],$lines[$i+2][2];
+                  $allel = join "", $lines[$i][4],$lines[$i+1][4],$lines[$i+2][4];
+                  $freq_diff = max($lines[$i][8], $lines[$i+1][8], $lines[$i+2][8]) - min($lines[$i][8], $lines[$i+1][8], $lines[$i+2][8]);
+                  if (($lines[$i][5] <= $lines[$i+1][5]) and ($lines[$i][5] <= $lines[$i+2][5])) {
+                    $covf = $lines[$i][5];
+                  } elsif ($lines[$i+1][5] <= $lines[$i+2][5]) {
+                      $covf = $lines[$i+1][5];
+                  } else {
+                      $covf = $lines[$i+2][5];
+                  }
+                  if (($lines[$i][6] <= $lines[$i+1][6]) and ($lines[$i][6] <= $lines[$i+2][6])) {
+                    $covr = $lines[$i][6];
+                  } elsif ($lines[$i+1][6] <= $lines[$i+2][6]) {
+                      $covr = $lines[$i+1][6];
+                  } else {
+                      $covr = $lines[$i+2][6];
+                  }
+                  if (($lines[$i][8] <= $lines[$i+1][8]) and ($lines[$i][8] <= $lines[$i+2][8])) {
+                    $freq = $lines[$i][8];
+                  } elsif ($lines[$i+1][8] <= $lines[$i+2][8]) {
+                      $freq = $lines[$i+1][8];
+                  } else {
+                      $freq = $lines[$i+2][8];
+                  }
+                  if ($freq_diff >= 25){
+							      $warning = "Warning";
+						      }
+						      if (($lines[$i][7] <= $lines[$i+1][7]) and ($lines[$i][7] <= $lines[$i+2][7])) {
+							      $min_qual = $lines[$i][7];
+						      } elsif ($lines[$i+1][7] <= $lines[$i+2][7]) {
+							        $min_qual = $lines[$i+1][7];
+						      } else {
+							       $min_qual = $lines[$i+2][7];
+						      }
+                  @tab = @{$lines[$i]};
+                  $tab_line = join "\t", $pos,$tab[1],$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
+                  print OUT "$tab_line\n";
+                  $multi += 1;
+                  $warning = "-";
+                } else {                                              #if aAA codon type print it out and set the counter to skip the next iteration
+                    $cc3 = (split ' ', $lines[$i][10])[1];
+                    $cc2 = (split ' ', $lines[$i+1][10])[1];
+                    $cc1 = (split ' ', $lines[$i+1][10])[1];
+                    $no_change = (split '/', substr( $cc2, 1, (length($cc2) - 2) ))[0];
+                    $cc1 = substr((split '/', substr( $cc1, 1, (length($cc1) - 2) ))[1],0,-2);
+                    $cc2 = substr((split '/', substr( $cc2, 1, (length($cc2) - 2) ))[1],1,-1);
+                    $cc3 = substr((split '/', substr( $cc3, 1, (length($cc3) - 2) ))[1],2);
+                    $cc = uc(join "",$cc1,$cc2,$cc3);
+                    $change = join "/",$no_change,(join "",$cc1,$cc2,$cc3);
+                    @holder = split "",$change; push @holder, ")"; unshift @holder, "(";
+                    $change = join "", @holder;
+                    $aa_pos = substr((split ' ', $lines[$i][10])[0],0,-3);
+                    $aa = $codon{$cc};
+                    $aa_pos = join "", $aa_pos,$aa;
+                    #$pos = join "-", $lines[$i][0],$lines[$i+1][0]; #start and stop
+                    $pos = $lines[$i][0];
+                    $ref = join "", $lines[$i][2],$lines[$i+1][2];
+                    $allel = join "", $lines[$i][4],$lines[$i+1][4];
+                    $freq_diff = abs($lines[$i][8] - $lines[$i+1][8]);
+                    if ($lines[$i][5] <= $lines[$i+1][5]) {
+                      $covf = $lines[$i][5];
+                    } else {
+                        $covf = $lines[$i+1][5];
+                    }
+                    if ($lines[$i][6] <= $lines[$i+1][6]) {
+                      $covr = $lines[$i][6];
+                    } else {
+                        $covr = $lines[$i+1][6];
+                    }
+                    if ($lines[$i][8] <= $lines[$i+1][8]) {
+                      $freq = $lines[$i][8];
+                    } else {
+                        $freq = $lines[$i+1][8];
+                    }
+                    if ($freq_diff >= 25){
+							        $warning = "Warning";
+						        }
+						        if ($lines[$i][7] <= $lines[$i+1][7]) {
+							        $min_qual = $lines[$i][7];
+						        } else {
+							          $min_qual = $lines[$i+1][7];
+						        }
+                    @tab = @{$lines[$i]};
+                    $tab_line = join "\t", $pos,$tab[1],$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
+                    print OUT "$tab_line\n";
+                    $multi += 1;
+                    $warning = "-";
+                }
+              } elsif ($lines[$i][0] == ($lines[$i+1][0]-2) && $lines[$i+1][2] eq "SNP") {       #if AaA codon type print it out and set the counter to skip the next iteration
+                  $cc3 = (split ' ', $lines[$i][10])[1];
+                  $cc2 = (split ' ', $lines[$i][10])[1];
+                  $cc1 = (split ' ', $lines[$i+1][10])[1];
+                  $no_change = (split '/', substr( $cc1, 1, (length($cc1) - 2) ))[0];
+                  $cc1 = substr((split '/', substr( $cc1, 1, (length($cc1) - 2) ))[1],0,-2);
+                  $cc2 = substr((split '/', substr( $cc2, 1, (length($cc2) - 2) ))[1],1,-1);
+                  $cc3 = substr((split '/', substr( $cc3, 1, (length($cc3) - 2) ))[1],2);
+                  $cc = uc(join "",$cc1,$cc2,$cc3);
+                  $change = join "/",$no_change,(join "",$cc1,$cc2,$cc3);
+                  @holder = split "",$change; push @holder, ")"; unshift @holder, "(";
+                  $change = join "", @holder;
+                  $aa_pos = substr((split ' ', $lines[$i][10])[0],0,-3);
+                  $aa = $codon{$cc};
+                  $aa_pos = join "", $aa_pos,$aa;
+                  #$pos = join "-", $lines[$i][0],$lines[$i+1][0]; #start and stop
+                  $pos = $lines[$i][0];
+                  $ref = join "", $lines[$i][2],$lines[$i+1][2];
+                  $allel = join "", $lines[$i][4],$lines[$i+1][4];
+                  $freq_diff = abs($lines[$i][8] - $lines[$i+1][8]);
+                  if ($lines[$i][5] <= $lines[$i+1][5]) {
+                    $covf = $lines[$i][5];
+                  } else {
+                      $covf = $lines[$i+1][5];
+                  }
+                  if ($lines[$i][6] <= $lines[$i+1][6]) {
+                    $covr = $lines[$i][6];
+                  } else {
+                      $covr = $lines[$i+1][6];
+                  }
+                  if ($lines[$i][8] <= $lines[$i+1][8]) {
+                    $freq = $lines[$i][8];
+                  } else {
+                      $freq = $lines[$i+1][8];
+                  }
+                  if ($freq_diff >= 25){
+							      $warning = "Warning";
+						      }
+						      if ($lines[$i][7] <= $lines[$i+1][7]) {
+							      $min_qual = $lines[$i][7];
+						      } else {
+							        $min_qual = $lines[$i+1][7];
+					      	}
+                  @tab = @{$lines[$i]};
+                  $tab_line = join "\t", $pos,$tab[1],$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
+                  print OUT "$tab_line\n";
+                  $multi += 1;
+                  $warning = "-";
+              } else {																				  #if Aaa codon type print it out
+					        @tab = @{$lines[$i]};
+					        $tab_line = join "\t", @tab[0..16],$warning;
+				        	print OUT "$tab_line\n";
+				      }
+          }
+        } else {
+			      if (($lines[$i][0] == ($lines[$i+1][0]-1))
+			      and (substr((split ' ', $lines[$i][10])[0],0,-3) eq substr((split ' ', $lines[$i+1][10])[0],0,-3))) { #check if in a middle of multi change codon and skip it
+				    next
+			      } else {																								  #set the multi codon change to 0 when moving onto next one
+				        $multi = 0;
+			      }
+		    }
+    }
+  } elsif ($lines[$i][3] eq "Ins"){																	  #check if insertion
+		  if ($lines[$i][0] == $lines[$i+1][0]){                                                            #check if next line is still an insertion, and grow the existing one if yes
+			  $ins += 1;
+			  if ($ins == 1) {
+				  $covf = $lines[$i][5];
+				  $covr = $lines[$i][6];
+          $min_qual = $lines[$i][7];
+				  $freq_max = $lines[$i][8];
+				  $freq_min = $lines[$i][8];
+				  $freq_diff = 0;
+			  }
+			  push @ins_allel, $lines[$i][4];
+			  push @ins_order, $lines[$i][1];
+			  if ($covf >= $lines[$i+1][5]) {
+				  $covf = $lines[$i+1][5];
+			  }
+			  if ($covr >= $lines[$i+1][6]) {
+				  $covr = $lines[$i+1][6];
+			  }
+        if ($min_qual >= $lines[$i+1][7]) {
+				  $min_qual = $lines[$i+1][7];
+			  }
+        if ($freq_max <= $lines[$i+1][8]) {
+  				$freq_max = $lines[$i+1][8];
+  			}
+  			if ($freq_min >= $lines[$i+1][8]){
+  				$freq_min = $lines[$i+1][8];
+  			}
+		} else {		                                                     #if this is the last ins line add it to ones before and print it all OUT
+			if ($ins == 0) {
+				$covf = $lines[$i][5];
+				$covr = $lines[$i][6];
+        $min_qual = $lines[$i][7];
+				$freq_max = $lines[$i][8];
+				$freq_min = $lines[$i][8];
+				$freq_diff = 0;
+			}
+      $freq_diff = $freq_max - $freq_min;
+			if ($freq_diff >= 25){
+				$warning = "Warning";
+			}
+			push @ins_allel, $lines[$i][4];
+			push @ins_order, $lines[$i][1];
+			no warnings "numeric";
+			my @idx = sort { $ins_order[$a] <=> $ins_order[$b] } 0 .. $#ins_order;
+			@ins_order = @ins_order[@idx];
+			@ins_allel = @ins_allel[@idx];
+			$pos = join "+",$lines[$i][0],(scalar @ins_allel);
+			$ref = $lines[$i][2];
+			$allel = join "", @ins_allel;
+			@tab = @{$lines[$i]};
+			$tab_line = join "\t", $pos,$tab[1],$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq_min,$covf+$covr,@tab[10..16],$warning;
+			print OUT "$tab_line\n";
+			$ins = 0;
+      $warning = "-";
+			@ins_order = ();
+			@ins_allel = ();
+		}
+	} else {																							  #the same as above but for deletions
+		  $del += 1;
+		  if ($del == 1) {
+				$del_start = $lines[$i][0];
+				$covf = $lines[$i][5];
+				$covr = $lines[$i][6];
+        $min_qual = $lines[$i][7];
+				$freq_max = $lines[$i][8];
+				$freq_min = $lines[$i][8];
+				$freq_diff = 0;
+			}
+	  	if ($lines[$i+1][3] eq "Del"  && ($lines[$i][0] == ($lines[$i+1][0]-1))){
+			  push @del_ref, $lines[$i][2];
+			  if ($covf >= $lines[$i+1][5]) {
+				  $covf = $lines[$i+1][5];
+			  }
+		  	if ($covr >= $lines[$i+1][6]) {
+			  	$covr = $lines[$i+1][6];
+		  	}
+        if ($min_qual >= $lines[$i+1][7]) {
+				$min_qual = $lines[$i+1][7];
+			}
+			if ($freq_max <= $lines[$i+1][8]) {
+				$freq_max = $lines[$i+1][8];
+			}
+			if ($freq_min >= $lines[$i+1][8]){
+				$freq_min = $lines[$i+1][8];
+			}
+		} else {
+        $freq_diff = $freq_max - $freq_min;
+        if ($freq_diff >= 25){
+          $warning = "Warning";
+        }
+			push @del_ref, $lines[$i][2];
+			#$pos = join "-", $del_start, $lines[$i][0]; #start and stop
+			$pos = $del_start;
+			$ref = join "", @del_ref;
+			$allel = $lines[$i][4];
+			@tab = @{$lines[$i]};
+			$tab_line = join "\t", $pos,$tab[1],$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq_min,$covf+$covr,@tab[10..16],$warning;
+			print OUT "$tab_line\n";
+			$del = 0;
+      $warning = "-";
+			@del_ref = ();
+		}
+	}
+}
+close OUT;
+}
 
 sub call_groups { # call groups from a joint strain analysis.
    my $GROUPS_OUT          =  shift;
@@ -2419,19 +3105,19 @@ sub call_groups { # call groups from a joint strain analysis.
    my $max_distance        =  0;
    my $strain_affiliation  =  {};
    my $temp_groups         =  {};
-   
+
    # we use an easy approach to call groups, just collect incrementally.
    # stop if no group changes.
    # we need $temp_groups to make sure that all strains get the right group
    # if two groups grow together.
-   
+
    # initialize self entry.
    foreach my $mainstrain (keys %$distance_matrix) {
       $strain_affiliation->{$mainstrain} = "ungrouped";
    }
    # safeguard against specified distance of 0
    my $min_distance           =  $distance + 1;
-   
+
    for(my $i = 0; $group_changed == 1; $i++) {
       $min_distance           =  $distance + 1;
       $group_changed          =  0;
@@ -2471,7 +3157,7 @@ sub call_groups { # call groups from a joint strain analysis.
          }
          $strain_affiliation->{$mainstrain_save}            =  $group;
          $strain_affiliation->{$strain_save}                =  $group;
-         
+
 		 # we need this to make sure that all strains get the right group.
          # if two groups grow together.
          if(($mainstrain_group =~ /group_\d+/) && !($mainstrain_group eq $group)) {
