@@ -18,9 +18,10 @@ use TBamend;
 use TBstrains;
 use TBgroups;
 use TBtools;
+use TBresi;
 
 
-my $VERSION =  "1.1.0";
+my $VERSION =  "2.0.0";
  
 # get current working directory and time.
 my $W_dir         =     getcwd();
@@ -43,6 +44,7 @@ my $JOIN_OUT      =     "$W_dir/Joint";
 my $AMEND_OUT     =     "$W_dir/Amend";
 my $STRAIN_OUT    =     "$W_dir/Classification";
 my $GROUPS_OUT    =     "$W_dir/Groups";
+my $RESI_OUT      =     "$W_dir/Resistance";
 
 # define PATHs.
 my $VAR_dir       =     "$RealBin/var/ref";
@@ -59,6 +61,7 @@ my $continue            =     "";
 my $samples             =     "";
 my $group_name          =     "";
 my $resi_list_master    =     "";
+my $resi_list_old       =     "";
 my $int_regions         =     "";
 my $categories          =     "";
 my $basecalib           =     "";
@@ -71,6 +74,15 @@ my $micovf              =     "";
 my $micovr              =     "";
 my $miphred20           =     "";
 my $mifreq              =     "";
+my $lfmicovf            =     "";
+my $lfmicovr            =     "";
+my $lfmiphred20         =     "";
+my $lfmifreq            =     "";
+my $cutoff              =     "";
+my $qcutoff             =     "";
+my $fcutoff             =     "";
+my $pcutoff             =     "";
+my $mincutoff           =     "";
 my $unambigous          =     "";
 my $window              =     "";
 my $distance            =     "";
@@ -88,6 +100,7 @@ GetOptions('step:s'        =>    \$step,
            'samples:s'     =>    \$samples,
            'project:s'     =>    \$group_name,
            'resilist:s'    =>    \$resi_list_master,
+           'resilistold:s' =>    \$resi_list_old,
            'intregions:s'  =>    \$int_regions,
            'categories:s'  =>    \$categories,
            'basecalib:s'   =>    \$basecalib,
@@ -95,11 +108,20 @@ GetOptions('step:s'        =>    \$step,
            'minbqual:i'    =>    \$mibqual,
            'all_vars'      =>    \$all_vars,
            'snp_vars'      =>    \$snp_vars,
-           'lowfreq_vars'  =>    \$lowfreq_vars,
+           #'lowfreq_vars'  =>    \$lowfreq_vars,
            'mincovf:i'     =>    \$micovf,
            'mincovr:i'     =>    \$micovr,
            'minphred20:i'  =>    \$miphred20,
            'minfreq:i'     =>    \$mifreq,
+           'lfmincovf:i'   =>    \$lfmicovf,
+           'lfmincovr:i'   =>    \$lfmicovr,
+           'lfminphred20:i'=>    \$lfmiphred20,
+           'lfminfreq:i'   =>    \$lfmifreq,
+		   'cutoff:i'      =>    \$cutoff,
+		   'qcutoff:i'     =>    \$qcutoff,
+           'fcutoff:i'     =>    \$fcutoff,
+           'pcutoff:i'     =>    \$pcutoff,
+           'mincutoff:i'   =>    \$mincutoff,
            'unambig:i'     =>    \$unambigous,
            'window:i'      =>    \$window,
            'distance:i'    =>    \$distance,
@@ -189,6 +211,7 @@ unless(($step eq 'TBfull'     )  ||
        ($step eq 'TBvariants' )  ||
        ($step eq 'TBstats'    )  ||
        ($step eq 'TBstrains'  )  ||
+       ($step eq 'TBresi'     )  ||
        ($step eq 'TBjoin'     )  ||
        ($step eq 'TBamend'    )  ||
        ($step eq 'TBgroups'   )
@@ -199,6 +222,7 @@ if($continue         eq    ''    ) { $continue           =     0;               
 if($samples          eq    ''    ) { $samples            =     "NONE";                             }
 if($group_name       eq    ''    ) { $group_name         =     "NONE";                             }
 if($resi_list_master eq    ''    ) { $resi_list_master   =     "NONE";                             }
+if($resi_list_old eq       ''    ) { $resi_list_old      =     "NONE";                             }
 if($int_regions      eq    ''    ) { $int_regions        =     "NONE";                             }
 if($categories       eq    ''    ) { $categories         =     "NONE";                             }
 if($basecalib        eq    ''    ) { $basecalib          =     "NONE";                             }
@@ -207,6 +231,10 @@ if($mibqual          eq    ''    ) { $mibqual            =     13;              
 if($all_vars         eq    ''    ) { $all_vars           =     0;                                  }
 if($snp_vars         eq    ''    ) { $snp_vars           =     0;                                  }
 if($lowfreq_vars     eq    ''    ) { $lowfreq_vars       =     0;                                  }
+if($lfmicovf         eq    ''    ) { $lfmicovf           =     1;                                  }
+if($lfmicovr         eq    ''    ) { $lfmicovr           =     1;                                  }
+if($lfmiphred20      eq    ''    ) { $lfmiphred20        =     1;                                  }
+if($lfmifreq         eq    ''    ) { $lfmifreq           =     5;                                  }
 if($micovf           eq    ''    ) { $micovf             =     4;                                  }
 if($micovr           eq    ''    ) { $micovr             =     4;                                  }
 if($miphred20        eq    ''    ) { $miphred20          =     4;                                  }
@@ -216,7 +244,11 @@ if($window           eq    ''    ) { $window             =     12;              
 if($distance         eq    ''    ) { $distance           =     12;                                 }
 if($quiet            eq    ''    ) { $quiet              =     0;                                  }
 if($threads          eq    ''    ) { $threads            =     1;                                  }
-
+if($cutoff           eq    ''    ) { $cutoff             =     2;                                  }
+if($qcutoff          eq    ''    ) { $qcutoff            =     4;                                  }
+if($fcutoff          eq    ''    ) { $fcutoff            =     5;                                  }
+if($pcutoff          eq    ''    ) { $pcutoff            =     80;                                 }
+if($mincutoff        eq    ''    ) { $mincutoff          =     4;                                  }
 # set name of $ref fasta file and gene annotation.
 my $refg    =   $ref;
 $ref        .=  ".fasta";
@@ -224,11 +256,16 @@ $refg       .=  "_genes.txt";
 
 # if $ref is MTB than turn on resistance check.
 if($ref eq 'M._tuberculosis_H37Rv_2015-11-13.fasta') {
-   $resi_list_master    =   "$RealBin/var/res/MTB_Resistance_Mediating.txt"             if($resi_list_master eq 'NONE');   # MTBC Resistance mediating variants and MTBC phylogentic SNPs.
+   $resi_list_master    =   (glob("$RealBin/var/res/MTB_Resistance_Masterlist_ext_*.tsv"))      if($resi_list_master eq 'NONE');   # MTBC Resistance mediating variants and MTBC phylogentic SNPs.
+   $resi_list_old       =   "$RealBin/var/res/MTB_Resistance_Mediating.txt"             if($resi_list_old eq 'NONE');      # Outdated MTBC Resistance mediating variants and MTBC phylogentic SNPs.
    $int_regions         =   "$RealBin/var/res/MTB_Extended_Resistance_Mediating.txt"    if($int_regions eq 'NONE');        # MTBC extended intergenic resistance mediating positions.
    $categories          =   "$RealBin/var/cat/MTB_Gene_Categories.txt"                  if($categories eq 'NONE');         # MTBC essential and non-essential genes.
-   $basecalib           =   "$RealBin/var/res/MTB_Base_Calibration_List.vcf"                if($basecalib eq 'NONE');          # MTBC base calibration list. Known SNP positions for base call recalibration.
+   $basecalib           =   "$RealBin/var/res/MTB_Base_Calibration_List.vcf"            if($basecalib eq 'NONE');          # MTBC base calibration list. Known SNP positions for base call recalibration.
 }
+my $resi_list_date      =     "custom";
+$resi_list_date = $1 if ($resi_list_master) =~/^.*(\d\d\d\d.\d\d.\d\d)/;
+#print "$resi_list_date\n";
+#print "$resi_list_master\n";
 
 # create log file and log on screen if --quiet is unset.
 my $logprint;
@@ -264,6 +301,7 @@ print $logprint "<INFO>\t",timer(),"\t--continue\t$continue\n";
 print $logprint "<INFO>\t",timer(),"\t--samples\t$samples\n";
 print $logprint "<INFO>\t",timer(),"\t--project\t$group_name\n";
 print $logprint "<INFO>\t",timer(),"\t--resilist\t$resi_list_master\n";
+print $logprint "<INFO>\t",timer(),"\t--resilistold\t$resi_list_old\n";
 print $logprint "<INFO>\t",timer(),"\t--intregions\t$int_regions\n";
 print $logprint "<INFO>\t",timer(),"\t--categories\t$categories\n";
 print $logprint "<INFO>\t",timer(),"\t--basecalib\t$basecalib\n";
@@ -271,11 +309,20 @@ print $logprint "<INFO>\t",timer(),"\t--ref\t\t$ref\n";
 print $logprint "<INFO>\t",timer(),"\t--minbqual\t$mibqual\n";
 print $logprint "<INFO>\t",timer(),"\t--all_vars\t$all_vars\n";
 print $logprint "<INFO>\t",timer(),"\t--snp_vars\t$snp_vars\n";
-print $logprint "<INFO>\t",timer(),"\t--lowfreq_vars\t$lowfreq_vars\n";
 print $logprint "<INFO>\t",timer(),"\t--mincovf\t$micovf\n";
 print $logprint "<INFO>\t",timer(),"\t--mincovr\t$micovr\n";
 print $logprint "<INFO>\t",timer(),"\t--minphred20\t$miphred20\n";
 print $logprint "<INFO>\t",timer(),"\t--minfreq\t$mifreq\n";
+#print $logprint "<INFO>\t",timer(),"\t--lowfreq_vars\t$lowfreq_vars\n";
+print $logprint "<INFO>\t",timer(),"\t--lfmincovf\t$lfmicovf\n";
+print $logprint "<INFO>\t",timer(),"\t--lfmincovr\t$lfmicovr\n";
+print $logprint "<INFO>\t",timer(),"\t--lfminphred20\t$lfmiphred20\n";
+print $logprint "<INFO>\t",timer(),"\t--lfminfreq\t$lfmifreq\n";
+print $logprint "<INFO>\t",timer(),"\t--cutoff\t$cutoff\n";
+print $logprint "<INFO>\t",timer(),"\t--qcutoff\t$qcutoff\n";
+print $logprint "<INFO>\t",timer(),"\t--fcutoff\t$fcutoff\n";
+print $logprint "<INFO>\t",timer(),"\t--pcutoff\t$pcutoff\n";
+print $logprint "<INFO>\t",timer(),"\t--mincutoff\t$mincutoff\n";
 print $logprint "<INFO>\t",timer(),"\t--unambig\t$unambigous\n";
 print $logprint "<INFO>\t",timer(),"\t--window\t$window\n";
 print $logprint "<INFO>\t",timer(),"\t--distance\t$distance\n";
@@ -293,10 +340,12 @@ print $logprint "<INFO>\t",timer(),"\t$GATK_OUT\n";
 print $logprint "<INFO>\t",timer(),"\t$MPILE_OUT\n";
 print $logprint "<INFO>\t",timer(),"\t$POS_OUT\n";
 print $logprint "<INFO>\t",timer(),"\t$CALL_OUT\n";
+print $logprint "<INFO>\t",timer(),"\t$RESI_OUT\n";
 print $logprint "<INFO>\t",timer(),"\t$JOIN_OUT\n";
 print $logprint "<INFO>\t",timer(),"\t$AMEND_OUT\n";
 print $logprint "<INFO>\t",timer(),"\t$STRAIN_OUT\n";
 print $logprint "<INFO>\t",timer(),"\t$GROUPS_OUT\n";
+print $logprint "<INFO>\t",timer(),"\t$RESI_OUT\n";
 
 
 # initialize check up and content arrays.
@@ -313,6 +362,12 @@ my @pos_files;
 my @pos_files_new;
 my @var_files;
 my @var_files_new;
+my @truecodon_files;
+my @truecodon_files_new;
+my @resi_files;
+my @resi_files_new;
+my @resisum_files;
+my @resisum_files_new;
 my @join_files;
 my @join_files_new;
 my @amend_files;
@@ -341,6 +396,7 @@ if($step eq 'TBlist'       ) { goto TBlist      }
 if($step eq 'TBvariants'   ) { goto TBvariants  }
 if($step eq 'TBstats'      ) { goto TBstats     }
 if($step eq 'TBstrains'    ) { goto TBstrains   }
+if($step eq 'TBresi'       ) { goto TBresi      }
 if($step eq 'TBjoin'       ) { goto TBjoin      }
 if($step eq 'TBamend'      ) { goto TBamend     }
 if($step eq 'TBgroups'     ) { goto TBgroups    }
@@ -369,11 +425,13 @@ system("mkdir -p $GATK_OUT");
 system("mkdir -p $MPILE_OUT");
 system("mkdir -p $POS_OUT");
 system("mkdir -p $CALL_OUT");
+system("mkdir -p $RESI_OUT");
 system("mkdir -p $STATS_OUT");
 system("mkdir -p $JOIN_OUT");
 system("mkdir -p $AMEND_OUT");
 system("mkdir -p $STRAIN_OUT");
 system("mkdir -p $GROUPS_OUT");
+system("mkdir -p $RESI_OUT");
 
 opendir(BAMDIR,"$BAM_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $BAM_OUT: MTBseq.pl line: ", __LINE__ , "\n";
 @bam_files        =  grep { $_ =~ /^\w.*\.bam$/ && -f "$BAM_OUT/$_"           }  readdir(BAMDIR);
@@ -560,7 +618,10 @@ foreach my $pos_file (sort { $a cmp $b } @pos_files_new) {
    print $logprint "<INFO>\t",timer(),"\t$pos_file\n";
 }
 print $logprint "\n<INFO>\t",timer(),"\tStart variant calling...\n";
-tbvariants($logprint,$VAR_dir,$POS_OUT,$CALL_OUT,$ref,$refg,$micovf,$micovr,$miphred20,$mifreq,$resi_list_master,$int_regions,$snp_vars,$lowfreq_vars,@pos_files_new);
+tbvariants($logprint,$VAR_dir,$POS_OUT,$CALL_OUT,$ref,$refg,$micovf,$micovr,$miphred20,$mifreq,$resi_list_old,$int_regions,$snp_vars,$lowfreq_vars,@pos_files_new);
+$lowfreq_vars       =     1;
+tbvariants($logprint,$VAR_dir,$POS_OUT,$CALL_OUT,$ref,$refg,$lfmicovf,$lfmicovr,$lfmiphred20,$lfmifreq,$resi_list_old,$int_regions,$snp_vars,$lowfreq_vars,@pos_files_new);
+$lowfreq_vars       =     0;
 print $logprint "<INFO>\t",timer(),"\tFinished variant calling!\n";
 @pos_files     =  ();
 @var_files     =  ();
@@ -629,6 +690,100 @@ print $logprint "\n<INFO>\t",timer(),"\tStart strain call...\n";
 tbstrains($logprint,$VAR_dir,$POS_OUT,$STRAIN_OUT,$ref,$refg,$micovf,$micovr,$mifreq,$miphred20,$date_string,$lowfreq_vars,@pos_files);
 print $logprint "<INFO>\t",timer(),"\tFinished strain call!\n";
 @pos_files     =  ();
+if($continue == 0 && $step ne 'TBfull') { exit 1; }
+
+
+###under construction
+TBresi:
+if($step eq 'TBresi') {
+   print $logprint "\n<INFO>\t",timer(),"\t### [TBresi] selected ###\n";
+}
+opendir(CALLDIR,"$CALL_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $CALL_OUT: MTBseq.pl line: ", __LINE__ ," \n";
+opendir(RESIDIR,"$RESI_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $RESI_OUT: MTBseq.pl line: ", __LINE__ ," \n";
+
+@truecodon_files     =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_cf$lfmicovf\_cr$lfmicovr\_fr$lfmifreq\_ph$lfmiphred20\_outmode[01]${snp_vars}1\.tab$/ && -f "$CALL_OUT/$_"   }  readdir(CALLDIR);
+@resi_files        =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_$resi_list_date\_resi.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
+
+
+
+closedir(CALLDIR);
+closedir(RESIDIR);
+#if(scalar(@truecodon_files) == 0) {
+#   print $logprint "\n<ERROR>\t",timer(),"\tNo files to call resistance! Check content of $CALL_OUT!\n";
+#   exit 1;
+#}
+%check_up         =  map { (my $id = $_) =~ s/\..gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_resi.tab$//; $id => $id; } @resi_files;
+for(my $i = 0; $i < scalar(@truecodon_files); $i++) {
+   my $tmp        =  $truecodon_files[$i];
+   $tmp           =~ s/\.gatk_position_true-codon-variants\.tab//;
+   if(!exists $check_up{$tmp}) {
+      push(@truecodon_files_new,$truecodon_files[$i]);
+   }
+}
+#if(scalar(@truecodon_files_new) == 0) {
+#   print $logprint "\n<ERROR>\t",timer(),"\tAll resi variant files have been already created from $CALL_OUT!\n";
+#   exit 1;
+#}
+print $logprint "\n<INFO>\t",timer(),"\tCalling resistance:\n";
+foreach my $truecodon_file (sort { $a cmp $b } @truecodon_files_new) {
+   print $logprint "<INFO>\t",timer(),"\t$truecodon_file\n";
+}
+print $logprint "\n<INFO>\t",timer(),"\tStart resistance call...\n";
+
+tbresi($logprint,$VAR_dir,$CALL_OUT,$RESI_OUT,$date_string,$resi_list_master,$resi_list_date,@truecodon_files_new);
+
+print $logprint "<INFO>\t",timer(),"\tFinished resistance call!\n";
+
+opendir(RESIDIR,"$RESI_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $RESI_OUT: MTBseq.pl line: ", __LINE__ ," \n";
+
+@resisum_files       =  grep { $_ =~ /^\w.*\_${resi_list_date}\_resi\_summary.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
+
+
+closedir(RESIDIR);
+#if(scalar(@resi_files) == 0) {
+#   print $logprint "\n<ERROR>\t",timer(),"\tNo files to call resistance! Check content of $CALL_OUT!\n";
+#   exit 1;
+#}
+
+%check_up         =  map { (my $id = $_) =~ s/\..gatk_position_true-codon-variants_outmode[01]${snp_vars}1${resi_list_date}\_resi.tab$//; $id => $id; } @resi_files;
+for(my $i = 0; $i < scalar(@resi_files); $i++) {
+   my $tmp        =  $resi_files[$i];
+   $tmp           =~ s/\.gatk_position_true-codon-variants\.tab//;
+   if(!exists $check_up{$tmp}) {
+      push(@resi_files_new,$resi_files[$i]);
+   }
+}
+#if(scalar(@resi_files_new) == 0) {
+#   print $logprint "\n<ERROR>\t",timer(),"\tAll resi variant files have been already created from $RESI_OUT!\n";
+#   exit 1;
+#}
+print $logprint "\n<INFO>\t",timer(),"\tStart resistance call summary...\n";
+#tbresisummary ($logprint, $RESI_OUT,$cutoff,$qcutoff,$fcutoff,$pcutoff,$mincutoff,@resi_files_new);
+print $logprint "<INFO>\t",timer(),"\tFinished resistance call summary!\n";
+
+opendir(RESIDIR,"$RESI_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $RESI_OUT: MTBseq.pl line: ", __LINE__ ," \n";
+
+closedir(RESIDIR);
+#if(scalar(@resisum_files) == 0) {
+#   print $logprint "\n<ERROR>\t",timer(),"\tNo files to call resistance summary! Check content of $RESI_OUT!\n";
+#   exit 1;
+#}
+print $logprint "\n<INFO>\t",timer(),"\tStart combined resistance call summary...\n";
+
+#foreach my $file (sort { $a cmp $b } @resisum_files) {
+#   print $logprint "<INFO>\t",timer(),"\t$file\n";
+#}
+
+
+tbcombinedresi ($logprint, $RESI_OUT, $resi_list_date, @resisum_files);
+print $logprint "<INFO>\t",timer(),"\tFinished combined resistance call summary!\n";
+
+@truecodon_files     =  ();
+@truecodon_files_new     =  ();
+@resi_files     =  ();
+@resi_files_new     =  ();
+@resisum_files     =  ();
+
 if($continue == 0 && $step ne 'TBfull') { exit 1; }
 
 
@@ -730,7 +885,7 @@ foreach my $join_file (sort { $a cmp $b } @join_files_new) {
    print $logprint "<INFO>\t",timer(),"\t$join_file\n";
 }
 print $logprint "\n<INFO>\t",timer(),"\tStart amending joint variant table...\n";
-tbamend($logprint,$JOIN_OUT,$AMEND_OUT,$micovf,$micovr,$miphred20,$mifreq,$unambigous,$window,$categories,$resi_list_master,$int_regions,@join_files_new);
+tbamend($logprint,$JOIN_OUT,$AMEND_OUT,$micovf,$micovr,$miphred20,$mifreq,$unambigous,$window,$categories,$resi_list_old,$int_regions,@join_files_new);
 print $logprint "<INFO>\t",timer(),"\tFinished amending joint variant table!\n";
 @join_files       =  ();
 @amend_files      =  ();
