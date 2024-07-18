@@ -443,6 +443,8 @@ sub tbresi {
 sub tbresisummary {
     my $logprint                 =      shift;
     my $RESI_OUT                 =      shift;
+	my $snp_vars                 =      shift;
+	my $resi_list_date           =      shift;
 	my $cutoff                   =      shift;
 	my $qcutoff                  =      shift;
 	my $fcutoff                  =      shift;
@@ -463,9 +465,12 @@ sub tbresisummary {
 	my $prediction                    =       "";
 	my %mutations;
 
-
+opendir(RESIDIR,"$RESI_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $RESI_OUT: MTBseq.pl line: ", __LINE__ ," \n";
+@resi_files        =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_$resi_list_date\_resi.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
+closedir(RESIDIR);
 
   foreach my $resi_file (@resi_files) { #check whether the file is empty
+	
 	  $empty = "full";
 	  my @line_number = read_file("$RESI_OUT/$resi_file");
 	  my $lines = @line_number;
