@@ -708,16 +708,20 @@ opendir(RESIDIR,"$RESI_OUT")      || die print $logprint "<ERROR>\t",timer(),"\t
 closedir(CALLDIR);
 closedir(RESIDIR);
 
+foreach my $truecodon_file (sort { $a cmp $b } @truecodon_files) {
+   print $logprint "<INFO>\t",timer(),"\t$truecodon_file\n";
+}
+
 if(scalar(@truecodon_files) == 0) {
    print $logprint "\n<ERROR>\t",timer(),"\tNo files to call resistance! Check content of $CALL_OUT!\n";
    exit 1;
 }
 
-%check_up         =  map { (my $id = $_) =~ s/\..gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_${resi_list_date}_resi.tab$//; $id => $id; } @resi_files;
+%check_up         =  map { (my $id = $_) =~ s/\.gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_${resi_list_date}_resi.tab$//; $id => $id; } @resi_files;
 
 for(my $i = 0; $i < scalar(@truecodon_files); $i++) {
    my $tmp        =  $truecodon_files[$i];
-   $tmp           =~ s/\.gatk_position_true-codon-variants\.tab//;
+   $tmp           =~ s/\.gatk_position_true-codon-variants_cf$lfmicovf\_cr$lfmicovr\_fr$lfmifreq\_ph$lfmiphred20\_outmode[01]${snp_vars}1\.tab//;
    if(!exists $check_up{$tmp}) {
       push(@truecodon_files_new,$truecodon_files[$i]);
    }
