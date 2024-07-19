@@ -744,30 +744,34 @@ undef(%check_up);
 opendir(RESIDIR,"$RESI_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $RESI_OUT: MTBseq.pl line: ", __LINE__ ," \n";
 
 @resi_files =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_$resi_list_date\_resi.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
-@resisum_files       =  grep { $_ =~ /^\w.*\_${resi_list_date}\_resi\_summary.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
 closedir(RESIDIR);
+opendir(RESIDIR,"$RESI_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $RESI_OUT: MTBseq.pl line: ", __LINE__ ," \n";
 
+@resisum_files       =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_$resi_list_date\_resi\_summary.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
+closedir(RESIDIR);
 
 if(scalar(@resi_files) == 0) {
    print $logprint "\n<ERROR>\t",timer(),"\tNo files to calculate resistance summary! Check content of $RESI_OUT!\n";
    exit 1;
 }
 
-%check_up      =  map { (my $id = $_) =~ s/\.\_${resi_list_date}\_resi\_summary.tab$//; $id => $id; } @resisum_files;
+%check_up      =  map { (my $id = $_) =~ s/\.gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_${resi_list_date}_resi_summary.tab$//; $id => $id; } @resisum_files;
 for(my $i = 0; $i < scalar(@resi_files); $i++) {
    my $tmp     =  $resi_files[$i];
-   $tmp        =~ s/\..gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_$resi_list_date\_resi.tab//;
+   $tmp        =~ s/\.gatk_position_true-codon-variants_outmode[01]${snp_vars}1_$resi_list_date\_resi.tab//;
+   
    if(!exists $check_up{$tmp}) {
       push(@resi_files_new,$resi_files[$i]);
    }
 }
-
-
-if(scalar(@resi_files_new) == 0) {
-   print $logprint "\n<ERROR>\t",timer(),"\tAll resi variant files have been already created from $RESI_OUT!\n";
-   exit 1;
+foreach my $resi_file (sort { $a cmp $b } @resi_files_new) {
+   print $logprint "<INFO>\t",timer(),"\t$resi_file\n";
 }
 
+if(scalar(@resi_files_new) == 0) {
+   print $logprint "\n<ERROR>\t",timer(),"\tAll resi summary files have been already created from $RESI_OUT!\n";
+   exit 1;
+}
 
 print $logprint "\n<INFO>\t",timer(),"\tStart resistance call summary...\n";
 tbresisummary ($logprint, $RESI_OUT, $snp_vars, $resi_list_date,$cutoff,$qcutoff,$fcutoff,$pcutoff,$mincutoff,@resi_files_new);

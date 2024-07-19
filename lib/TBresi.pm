@@ -32,10 +32,10 @@ sub tbresi {
    my $date_string               =  shift;
    my $resi_list_master          =  shift;
    my $resi_list_date            =  shift;
-   my @truecodon_files           =  @_;
+   my @truecodon_files           =     @_;
    my $minion                    =     "";
-   my $res_hash = {};
-   my $change_hash ={};
+   my $res_hash                  =     {};
+   my $change_hash               =     {};
    
    print $logprint ("<INFO>\t",timer(),"\tNo resistance file $resi_list_master. Will skip resistance annotation.\n") unless(-f $resi_list_master);
    #if($resi_list_master            eq   ''||"NONE"   ) { die "\n[ERROR]\t",timer(),"\tNeed to provide a resistance file. Use --help for usage information\n";}
@@ -136,16 +136,16 @@ sub tbresi {
 			my $pos			= $line[0];		$pos 			= 0 unless($pos);
 			my $pos_insertion = $pos;
 			$pos_insertion =~s/[i|\+]\d+$//;
-			my $ref			= $line[1];		$ref 			= 0 unless($ref);
-			my $type		= $line[2];		$type 			= 0 unless($type);
+			my $ref			= $line[2];		$ref 			= 0 unless($ref);
+			my $type		= $line[3];		$type 			= 0 unless($type);
 			next if ($minion and $type eq "Del");
-			my $allel		= $line[3];		$allel 			= 0 unless($allel);
-			my $cov_forward = $line[4];		$cov_forward 	= 0 unless($cov_forward);
-			my $cov_reverse = $line[5];		$cov_reverse 	= 0 unless($cov_reverse);
-			my $qual_20		= $line[6];		$qual_20 		= 0 unless($qual_20);
-			my $freq1		= $line[7];		$freq1 			= 0 unless($freq1);
-			my $coverage	= $line[8];		$coverage 		= 0 unless($coverage);
-			my $subs		= $line[9];		$subs 			= 0 unless($subs);
+			my $allel		= $line[4];		$allel 			= 0 unless($allel);
+			my $cov_forward = $line[5];		$cov_forward 	= 0 unless($cov_forward);
+			my $cov_reverse = $line[6];		$cov_reverse 	= 0 unless($cov_reverse);
+			my $qual_20		= $line[7];		$qual_20 		= 0 unless($qual_20);
+			my $freq1		= $line[8];		$freq1 			= 0 unless($freq1);
+			my $coverage	= $line[9];		$coverage 		= 0 unless($coverage);
+			my $subs		= $line[10];		$subs 			= 0 unless($subs);
 			my $subst		= $subs;
 			$subst=~s/\s.*$//;
 			#print "$subst\n";
@@ -169,15 +169,15 @@ sub tbresi {
 				$subst =~ s/[^0-9]//g;
 				$subst = $old_aa.$subst.$new_aa;
 			}
-		my $gene		= $line[10];	$gene 			= 0 unless($gene);
-		my $gene_name	= $line[11];	$gene_name 		= 0 unless($gene_name);
+		my $gene		= $line[11];	$gene 			= 0 unless($gene);
+		my $gene_name	= $line[12];	$gene_name 		= 0 unless($gene_name);
 		if ($gene_name eq "-"){$gene_name = $gene};
 		if ($gene_name eq "gidB"){$gene_name = "gid"};
-		my $annotation	= $line[12];	$annotation 	= 0 unless($annotation);
-		#my $resistance	= $line[11];	$resistance 	= 0 unless($resistance);
-		#my $phylo		= $line[12];	$phylo 			= 0 unless($phylo);
-		my $region		= $line[13];	$region 		= 0 unless($region);
-		my $warning		= $line[14];	$warning 		= "-" unless($warning);
+		my $annotation	= $line[13];	$annotation 	= 0 unless($annotation);
+		my $resistance	= $line[14];	$resistance 	= 0 unless($resistance);
+		my $phylo		= $line[15];	$phylo 			= 0 unless($phylo);
+		my $region		= $line[16];	$region 		= 0 unless($region);
+		my $warning		= $line[17];	$warning 		= "-" unless($warning);
 
 		my $gene_position;
 		my $wt_allel = $ref;
@@ -427,17 +427,18 @@ sub tbresi {
 				}
 			}
 
-   print OUT "$pos\t$ref\t$type\t$allel\t$cov_forward\t$cov_reverse\t$qual_20\t$freq1\t$coverage\t$subs\t$gene\t$gene_name\t$annotation\t$region\t$warning\t$better_res\t$benigninfo\t$better_res_change\t$res_comment\n";
+   print OUT "$pos\t\t$ref\t$type\t$allel\t$cov_forward\t$cov_reverse\t$qual_20\t$freq1\t$coverage\t$subs\t$gene\t$gene_name\t$annotation\t$resistance\t$phylo\t$region\t$warning\t$better_res\t$benigninfo\t$better_res_change\t$res_comment\n";
    
 			}
    close (IN);
    close (OUT);
-   @truecodon_files    =  ();
+   
    $res_hash           =  {};
    $change_hash        =  {};
 		}
 	print $logprint "<INFO>\t",timer(),"\tFinished calling resistance for $variant_file!\n";
 	}
+@truecodon_files    =  ();
 }
 
 sub tbresisummary {
