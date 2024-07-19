@@ -450,24 +450,25 @@ sub tbresisummary {
 	my $fcutoff                  =      shift;
 	my $pcutoff                  =      shift;
 	my $mincutoff                =      shift;
-	my @resi_files               =      shift;
-	my $resi_file                =       {};
-	my $file                     =       {};
-	my $empty					 =		 {};	
-	my @line_number				 =		 @_;
-	my $line                     =       {};
-	my @ID                       =       @_;
-	my $outputfile               =       {};
-	my @names                    =       ();
+	my @resi_files               =      @_;
+	my $resi_file                =       "";
+	my $file                     =       "";
+	my $empty					 =		 "";	
+	my @line_number				 ;
+	my $line                     =       "";
+	my @ID                       ;
+	my $outputfile               =       "";
+	my @names                   ;
 	my $name                    =       "";
 	my $dim                    =       "";
 	my $antibiotic                    =       "";
 	my $prediction                    =       "";
 	my %mutations;
 
-opendir(RESIDIR,"$RESI_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $RESI_OUT: MTBseq.pl line: ", __LINE__ ," \n";
-@resi_files        =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_$resi_list_date\_resi.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
-closedir(RESIDIR);
+
+#opendir(RESIDIR,"$RESI_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $RESI_OUT: MTBseq.pl line: ", __LINE__ ," \n";
+#@resi_files        =  grep { $_ =~ /^\w.*\.gatk_position_true-codon-variants_outmode[01]${snp_vars}1\_$resi_list_date\_resi.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
+#closedir(RESIDIR);
 
   foreach my $resi_file (@resi_files) { #check whether the file is empty
 	
@@ -570,15 +571,15 @@ sub tbcombinedresi{
    my $logprint                   =      shift;
    my $RESI_OUT                   =      shift;
    my $resi_list_date             =      shift;
-   my @resisum_files              =      shift;
-   my $resisum_file               =      {};
-   my $id                         =      {};
-   my @sample                     =      @_;
+   my @resisum_files              =      @_;
+   my $resisum_file               =      "";
+   my $id                         =      "";
+   my @sample                     ;
    my $output_file                =  "Strain_Resistance.tab";
    my %check_up;
 	
-	opendir(RESIDIR,"$RESI_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $RESI_OUT: MTBseq.pl line: ", __LINE__ ," \n";
-	@resisum_files       =  grep { $_ =~ /^\w.*\_${resi_list_date}\_resi\_summary.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
+	#opendir(RESIDIR,"$RESI_OUT")      || die print $logprint "<ERROR>\t",timer(),"\tCan\'t open directory $RESI_OUT: MTBseq.pl line: ", __LINE__ ," \n";
+	#@resisum_files       =  grep { $_ =~ /^\w.*\_${resi_list_date}\_resi\_summary.tab$/ && -f "$RESI_OUT/$_"   }  readdir(RESIDIR);
 
 	
 	if(-f "$RESI_OUT/$output_file") {
