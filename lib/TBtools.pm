@@ -49,7 +49,6 @@ $VERSION    =  2.0.0;
                   filter_wlength
                   build_matrix
                   call_variants
-                  call_true_codon
                   call_groups
                   translate_homolka2coll
                   translate_coll2homolka
@@ -2429,7 +2428,7 @@ sub parse_input_multi_codon {
   my $CALL_OUT                 = shift;
   my $true_codon_variants_file = shift;
   my $input_file               = shift;
-  my $header  =  "#Pos\tInsindex\tRef\tType\tAllel\tCovFor\tCovRev\tQual20\tFreq\tCov";
+  my $header  =  "#Pos\tRef\tType\tAllel\tCovFor\tCovRev\tQual20\tFreq\tCov";
      $header .= "\tSubst\tGene\tGeneName\tProduct\tResistanceSNP\tPhyloSNP\tInterestingRegion\tWarning\n";
 
   #my($input_file) = @_;
@@ -2517,14 +2516,14 @@ sub parse_input_multi_codon {
           my $cc = (split ' ', $lines[$i][10])[1];
 			    if (!$cc) {
 				    @tab = @{$lines[$i]};
-				    $tab_line = join "\t",@tab[0..16],$warning;
+				    $tab_line = join "\t",$tab[0],@tab[2..16],$warning;
 				    print OUT "$tab_line\n";
 				    next;
 			    }
           $cc = (split '/', substr( $cc, 1, (length($cc) - 2) ))[1];
           if ((split '',$cc)[2] =~ /[A,T,C,G]/){
             @tab = @{$lines[$i]};
-				    $tab_line = join "\t",@tab[0..16],$warning;
+				    $tab_line = join "\t",$tab[0],@tab[2..16],$warning;
 				    print OUT "$tab_line\n";
           } elsif ((split '',$cc)[1] =~ /[A,T,C,G]/){
               if ($lines[$i][0] == ($lines[$i+1][0]-1) && $lines[$i+1][3] eq "SNP") {
@@ -2570,13 +2569,13 @@ sub parse_input_multi_codon {
 						        $min_qual = $lines[$i+1][7];
 					        }
 					      @tab = @{$lines[$i]};
-					      $tab_line = join "\t", $pos,$tab[1],$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
+					      $tab_line = join "\t", $pos,$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
 					      print OUT "$tab_line\n";
 					      $multi += 1;
 					      $warning = "-";
               } else {
                   @tab = @{$lines[$i]};
-                  $tab_line = join "\t", @tab[0..16],$warning;
+                  $tab_line = join "\t", $tab[0],@tab[2..16],$warning;
                   print OUT "$tab_line\n";
               }
           } else {
@@ -2633,7 +2632,7 @@ sub parse_input_multi_codon {
 							        $min_qual = $lines[$i+2][7];
 						      }
                   @tab = @{$lines[$i]};
-						      $tab_line = join "\t", $pos,$tab[1],$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
+						      $tab_line = join "\t", $pos,$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
 						      print OUT "$tab_line\n";
 						      $multi += 1;
 						      $warning = "-";
@@ -2681,7 +2680,7 @@ sub parse_input_multi_codon {
 							        $min_qual = $lines[$i+1][7];
 						      }
                   @tab = @{$lines[$i]};
-						      $tab_line = join "\t", $pos,$tab[1],$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
+						      $tab_line = join "\t", $pos,$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
 						      print OUT "$tab_line\n";
 						      $multi += 1;
 						      $warning = "-";
@@ -2730,13 +2729,13 @@ sub parse_input_multi_codon {
 							    $min_qual = $lines[$i+1][7];
 						  }
               @tab = @{$lines[$i]};
-						  $tab_line = join "\t", $pos,$tab[1],$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
+						  $tab_line = join "\t", $pos,$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
 						  print OUT "$tab_line\n";
 						  $multi += 1;
               $warning = "-";
           } else { #if Aaa codon type print it out
               @tab = @{$lines[$i]};
-              $tab_line = join "\t", @tab[0..16],$warning;
+              $tab_line = join "\t",$tab[0],@tab[2..16],$warning;
               print OUT "$tab_line\n";
           }
         }
@@ -2753,14 +2752,14 @@ sub parse_input_multi_codon {
           my $cc = (split ' ', $lines[$i][10])[1];
 			    if (!$cc) {
             @tab = @{$lines[$i]};
-				    $tab_line = join "\t",@tab[0..16],$warning;
+				    $tab_line = join "\t",$tab[0],@tab[2..16],$warning;
 				    print OUT "$tab_line\n";
 				    next;
           }
           $cc = (split '/', substr( $cc, 1, (length($cc) - 2) ))[1];
 			    if ((split '',$cc)[0] =~ /[A,T,C,G]/) {                 # if Aaa codon type print it out
             @tab = @{$lines[$i]};
-            $tab_line = join "\t",@tab[0..16],$warning;
+            $tab_line = join "\t",$tab[0],@tab[2..16],$warning;
             print OUT "$tab_line\n";
           } elsif ((split '',$cc)[1] =~ /[A,T,C,G]/) {
               if ($lines[$i][0] == ($lines[$i+1][0]-1) && $lines[$i+1][2] eq "SNP") {                             #if AAa codon type print it out and set the counter to skip the next iteration
@@ -2806,13 +2805,13 @@ sub parse_input_multi_codon {
 						        $min_qual = $lines[$i+1][7];
 					      }
                 @tab = @{$lines[$i]};
-                $tab_line = join "\t", $pos,$tab[1],$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
+                $tab_line = join "\t", $pos,$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
                 print OUT "$tab_line\n";
                 $multi += 1;
                 $warning = "-";
               } else {																					  #if aAa codon type print it out
 					        @tab = @{$lines[$i]};
-					        $tab_line = join "\t", @tab[0..16],$warning;
+					        $tab_line = join "\t", $tab[0],@tab[2..16],$warning;
 					        print OUT "$tab_line\n";
 				      }
           } else {
@@ -2869,7 +2868,7 @@ sub parse_input_multi_codon {
 							       $min_qual = $lines[$i+2][7];
 						      }
                   @tab = @{$lines[$i]};
-                  $tab_line = join "\t", $pos,$tab[1],$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
+                  $tab_line = join "\t", $pos,$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
                   print OUT "$tab_line\n";
                   $multi += 1;
                   $warning = "-";
@@ -2917,7 +2916,7 @@ sub parse_input_multi_codon {
 							          $min_qual = $lines[$i+1][7];
 						        }
                     @tab = @{$lines[$i]};
-                    $tab_line = join "\t", $pos,$tab[1],$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
+                    $tab_line = join "\t", $pos,$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
                     print OUT "$tab_line\n";
                     $multi += 1;
                     $warning = "-";
@@ -2966,13 +2965,13 @@ sub parse_input_multi_codon {
 							        $min_qual = $lines[$i+1][7];
 					      	}
                   @tab = @{$lines[$i]};
-                  $tab_line = join "\t", $pos,$tab[1],$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
+                  $tab_line = join "\t", $pos,$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq,$covf+$covr,(join " ",$aa_pos,$change),@tab[11..16],$warning;
                   print OUT "$tab_line\n";
                   $multi += 1;
                   $warning = "-";
               } else {																				  #if Aaa codon type print it out
 					        @tab = @{$lines[$i]};
-					        $tab_line = join "\t", @tab[0..16],$warning;
+					        $tab_line = join "\t",$tab[0],@tab[2..16],$warning;
 				        	print OUT "$tab_line\n";
 				      }
           }
@@ -3036,7 +3035,7 @@ sub parse_input_multi_codon {
 			$ref = $lines[$i][2];
 			$allel = join "", @ins_allel;
 			@tab = @{$lines[$i]};
-			$tab_line = join "\t", $pos,$tab[1],$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq_min,$covf+$covr,@tab[10..16],$warning;
+			$tab_line = join "\t", $pos,$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq_min,$covf+$covr,@tab[10..16],$warning;
 			print OUT "$tab_line\n";
 			$ins = 0;
       $warning = "-";
@@ -3082,7 +3081,7 @@ sub parse_input_multi_codon {
 			$ref = join "", @del_ref;
 			$allel = $lines[$i][4];
 			@tab = @{$lines[$i]};
-			$tab_line = join "\t", $pos,$tab[1],$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq_min,$covf+$covr,@tab[10..16],$warning;
+			$tab_line = join "\t", $pos,$ref,$tab[3],$allel,$covf,$covr,$min_qual,$freq_min,$covf+$covr,@tab[10..16],$warning;
 			print OUT "$tab_line\n";
 			$del = 0;
       $warning = "-";
