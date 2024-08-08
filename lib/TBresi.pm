@@ -124,6 +124,7 @@ sub tbresi {
 			open (IN, "<", "$CALL_OUT/$variant_file") or die "\n[ERROR]\t",timer(),"\tUnable to open $variant_file\n";
 			my $header = <IN>;
 			$header =~ s/\015?\012?$//;
+			$header =~ s/\tResistanceSNP\tPhyloSNP//;
 			$header .= "\tResistance\tBenign\tMutation_Annotation\tComment";
 			print OUT "$header\n";
 
@@ -174,8 +175,8 @@ sub tbresi {
 		if ($gene_name eq "-"){$gene_name = $gene};
 		if ($gene_name eq "gidB"){$gene_name = "gid"};
 		my $annotation	= $line[12];	$annotation 	= 0 unless($annotation);
-		my $resistance	= $line[13];	$resistance 	= 0 unless($resistance);
-		my $phylo		= $line[14];	$phylo 			= 0 unless($phylo);
+		#my $resistance	= $line[13];	$resistance 	= 0 unless($resistance);
+		#my $phylo		= $line[14];	$phylo 			= 0 unless($phylo);
 		my $region		= $line[15];	$region 		= 0 unless($region);
 		my $warning		= $line[16];	$warning 		= "-" unless($warning);
 
@@ -427,17 +428,18 @@ sub tbresi {
 				}
 			}
 
-   print OUT "$pos\t\t$ref\t$type\t$allel\t$cov_forward\t$cov_reverse\t$qual_20\t$freq1\t$coverage\t$subs\t$gene\t$gene_name\t$annotation\t$region\t$warning\t$better_res\t$benigninfo\t$better_res_change\t$res_comment\n";
+   print OUT "$pos\t$ref\t$type\t$allel\t$cov_forward\t$cov_reverse\t$qual_20\t$freq1\t$coverage\t$subs\t$gene\t$gene_name\t$annotation\t$region\t$warning\t$better_res\t$benigninfo\t$better_res_change\t$res_comment\n";
    
 			}
    close (IN);
    close (OUT);
    
-   $res_hash           =  {};
-   $change_hash        =  {};
+
 		}
 	print $logprint "<INFO>\t",timer(),"\tFinished calling resistance for $variant_file!\n";
 	}
+$res_hash           =  {};
+$change_hash        =  {};
 @truecodon_files    =  ();
 }
 
@@ -481,13 +483,14 @@ sub tbresisummary {
 	  }
 	  next if ($empty eq "empty");
 	  
-	$resi_file=~/^(.+).tab/ or die "strange file format: $resi_file\n";
+	$resi_file=~/^(.+).tab/ or die "\n<ERROR>\t",timer(),"Strange file format: $resi_file\n";
 	my $file=$1;
-	open(Fout,">$RESI_OUT/${file}_summary.tab") or die "\n\ncannot write output file\n\n\n";    
+	open(Fout,">$RESI_OUT/${file}_summary.tab") or die "\n<ERROR>\t",timer(),"Cannot write output file\n";
 	print Fout "SampleID\tLibID\tINH\tFreq_INH\tRMP\tFreq_RMP\tSM\tFreq_SM\tEMB\tFreq_EMB\tPZA\tFreq_PZA\tMFX\tFreq_MFX\tLFX\tFreq_LFX\tCFZ\tFreq_CFZ\tKAN\tFreq_KAN\tAMK\tFreq_AMK\tCPR\tFreq_CPR\tETH/PTH\tFreq_ETH/PTH\tLZD\tFreq_LZD\tBDQ\tFreq_BDQ\tCS\tFreq_CS\tPAS\tFreq_PAS\tDLM\tFreq_DLM\tPrediction\n";
     @ID=split("_",$file);
     
-    open (Fin,"<$RESI_OUT/$resi_file") or die "\n\ncannot open $file\n\n\n";
+    open (Fin,"<$RESI_OUT/$resi_file") or die "\n<ERROR>\t",timer(),"Cannot open $file\n";
+    print $logprint ("<INFO>\t",timer(),"\tStart summarizing resistance for $resi_file...\n");
 	my $R = Statistics::R->new();
        $R->startR;
        $R->send('library("readr")');#R-Library for reading in tab-seperated files
@@ -507,7 +510,7 @@ sub tbresisummary {
                 antibiotic<-gsub("[()]","", anti)');
 			$name=$R->get('short');
 			$antibiotic=$R->get('antibiotic');
-        
+            
 			print "Search for mutations mediating resistance to $antibiotic\n";   
 			$R->run('table1<-table[which(table$CovFor >=cutoff & table$CovRev >=cutoff & table$Qual20 >=qcutoff & table$Freq >=fcutoff & table$Freq <=25 & table$Cov >= mincutoff & (table$Qual20/(table$CovRev + table$CovFor)*100) >= pcutoff),]
 				table2<-table[which(table$CovFor >=cutoff & table$CovRev >=cutoff & table$Qual20 >=qcutoff & table$Freq >=fcutoff & table$Freq >25 & table$Cov >= mincutoff),]
@@ -597,12 +600,12 @@ sub tbcombinedresi{
    }
   unless(-f "$RESI_OUT/$output_file") {
       print $logprint "<INFO>\t",timer(),"\t","Start writing $output_file...\n";
-      open (Fout,">>$RESI_OUT/${output_file}") or die "\n\ncannot open/write $output_file file\n\n\n";
+      open (Fout,">>$RESI_OUT/${output_file}") or die "\n<ERROR>\t",timer(),"Cannot open/write $output_file file\n";
       print Fout "SampleID\tLibID\tINH\tFreq_INH\tRMP\tFreq_RMP\tSM\tFreq_SM\tEMB\tFreq_EMB\tPZA\tFreq_PZA\tMFX\tFreq_MFX\tLFX\tFreq_LFX\tCFZ\tFreq_CFZ\tKAN\tFreq_KAN\tAMK\tFreq_AMK\tCPR\tFreq_CPR\tETH/PTH\tFreq_ETH/PTH\tLZD\tFreq_LZD\tBDQ\tFreq_BDQ\tCS\tFreq_CS\tPAS\tFreq_PAS\tDLM\tFreq_DLM\tPrediction\n";
       close Fout;
       print $logprint "<INFO>\t",timer(),"\t","Finished writing $output_file!\n";
    }
-   open (Fout,">>$RESI_OUT/${output_file}") or die "\n\ncannot open/write $output_file file\n\n\n";
+   open (Fout,">>$RESI_OUT/${output_file}") or die "\n<ERROR>\t",timer(),"Cannot open/write $output_file file\n";
    
    foreach my $resisum_file (sort { $a cmp $b } @resisum_files) {
 	print $logprint "<INFO>\t",timer(),"\t","Start parsing $resisum_file...\n";
@@ -617,7 +620,7 @@ sub tbcombinedresi{
 		}
 	  
     
-    open (Fin,"<$RESI_OUT/$resisum_file") or die "\n\ncannot open $resisum_file\n\n\n";
+    open (Fin,"<$RESI_OUT/$resisum_file") or die "\n<ERROR>\t",timer(),"Cannot open $resisum_file\n";
    
 	my $line = <Fin>; #remove header
 	my $mutations =<Fin>; #store mutation line in a variable
