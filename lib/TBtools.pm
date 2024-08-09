@@ -2429,7 +2429,7 @@ sub parse_input_multi_codon {
   my $true_codon_variants_file = shift;
   my $input_file               = shift;
   my $header  =  "#Pos\tRef\tType\tAllel\tCovFor\tCovRev\tQual20\tFreq\tCov";
-     $header .= "\tSubst\tGene\tGeneName\tProduct\tResistanceSNP\tPhyloSNP\tInterestingRegion\tWarning\n";
+     $header .= "\tSubst\tGene\tGeneName\tProduct\tResistanceSNP\tPhyloSNP\tInterestingRegion\tWarning";
 
   #my($input_file) = @_;
   #my $header      = "";

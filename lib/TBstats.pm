@@ -80,7 +80,7 @@ sub tbstats {
       }
       print $logprint "<INFO>\t",timer(),"\tStart using Samtools for BWA mapping statistics of $file...\n";
       my $content    =  qx/$SAMTOOLS_call flagstat $BAM_OUT\/$file/;
-      die print $logprint "$BAM_OUT/$file does not exist, TBstats.pm line: ", __LINE__ , " \n" if(!$content);
+      die print $logprint "<Error>\t",timer(),"$BAM_OUT/$file does not exist, TBstats.pm line: ", __LINE__ , " \n" if(!$content);
       my @lines      =  split(/\n/,$content);
       $lines[0]      =~ s/^(\d+)\s.*/$1/;
       $lines[4]      =~ s/^(\d+)\s.*/$1/;

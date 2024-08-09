@@ -66,7 +66,7 @@ sub tbresi {
 			);
    print $logprint "<INFO>\t",timer(),"\tStart parsing $resi_list_master...\n";
    if ($resi_list_master ne ""||"NONE"){
-   open(Fin, "<", $resi_list_master) or die "\n[ERROR]\t",timer(),"\tUnable to open $resi_list_master\n";
+   open(Fin, "<", $resi_list_master) or die "\n[ERROR]\t",timer(),"\tUnable to open $resi_list_master: TBresi.pm line: ", __LINE__ , " \n";
    <Fin>;
    while (my $line = <Fin>){
    $line          =~  s/\015?\012?$//;
@@ -118,14 +118,14 @@ sub tbresi {
 			(my $out_file = basename($variant_file)) =~ s/\..*$//g;
 			my $output_mode = $1 if ($variant_file) =~/^.*outmode(\d\d\d)/;
 
-			open(OUT,">","$RESI_OUT/${out_file}.gatk_position_true-codon-variants_outmode${output_mode}_${resi_list_date}_resi.tab") or die "\n<ERROR>\t",timer(),"\tUnable to create $${out_file}.gatk_position_true-codon-variants_outmode${output_mode}_${resi_list_date}_resi.tab\n";
+			open(OUT,">","$RESI_OUT/${out_file}.gatk_position_true-codon-variants_outmode${output_mode}_${resi_list_date}_resi.tab") or die "\n<ERROR>\t",timer(),"\tUnable to create $${out_file}.gatk_position_true-codon-variants_outmode${output_mode}_${resi_list_date}_resi.tab: TBresi.pm line: ", __LINE__ , " \n";
 
 
-			open (IN, "<", "$CALL_OUT/$variant_file") or die "\n[ERROR]\t",timer(),"\tUnable to open $variant_file\n";
+			open (IN, "<", "$CALL_OUT/$variant_file") or die "\n[ERROR]\t",timer(),"\tUnable to open $variant_file: TBresi.pm line: ", __LINE__ , " \n";
 			my $header = <IN>;
 			$header =~ s/\015?\012?$//;
 			$header =~ s/\tResistanceSNP\tPhyloSNP//;
-			$header .= "\tResistance\tBenign\tMutation_Annotation\tComment";
+			$header .= "\tResistance\tBenign\tMutation\tComment";
 			print OUT "$header\n";
 
 			while (my $line = <IN>) {
@@ -483,13 +483,13 @@ sub tbresisummary {
 	  }
 	  next if ($empty eq "empty");
 	  
-	$resi_file=~/^(.+).tab/ or die "\n<ERROR>\t",timer(),"Strange file format: $resi_file\n";
+	$resi_file=~/^(.+).tab/ or die "\n<ERROR>\t",timer(),"Strange file format: $resi_file: TBresi.pm line: ", __LINE__ , " \n";
 	my $file=$1;
-	open(Fout,">$RESI_OUT/${file}_summary.tab") or die "\n<ERROR>\t",timer(),"Cannot write output file\n";
+	open(Fout,">$RESI_OUT/${file}_summary.tab") or die "\n<ERROR>\t",timer(),"Cannot write output file: TBresi.pm line: ", __LINE__ , " \n";
 	print Fout "SampleID\tLibID\tINH\tFreq_INH\tRMP\tFreq_RMP\tSM\tFreq_SM\tEMB\tFreq_EMB\tPZA\tFreq_PZA\tMFX\tFreq_MFX\tLFX\tFreq_LFX\tCFZ\tFreq_CFZ\tKAN\tFreq_KAN\tAMK\tFreq_AMK\tCPR\tFreq_CPR\tETH/PTH\tFreq_ETH/PTH\tLZD\tFreq_LZD\tBDQ\tFreq_BDQ\tCS\tFreq_CS\tPAS\tFreq_PAS\tDLM\tFreq_DLM\tPrediction\n";
     @ID=split("_",$file);
     
-    open (Fin,"<$RESI_OUT/$resi_file") or die "\n<ERROR>\t",timer(),"Cannot open $file\n";
+    open (Fin,"<$RESI_OUT/$resi_file") or die "\n<ERROR>\t",timer(),"Cannot open $file: TBresi.pm line: ", __LINE__ , " \n";
     print $logprint ("<INFO>\t",timer(),"\tStart summarizing resistance for $resi_file...\n");
 	my $R = Statistics::R->new();
        $R->startR;
@@ -526,7 +526,7 @@ sub tbresisummary {
                 if(dim(idx)[1]>1){
                     for(i in 1:dim(idx)[1]){
                         
-                            mut[i]<-idx$Mutation_Annotation[i];
+                            mut[i]<-idx$Mutation[i];
                             freq[i]<-round(idx$Freq[i],digits=2);
                     }
                     if(length(mut)==2){mut<-paste(mut[1],mut[2],sep="; ")
@@ -542,7 +542,7 @@ sub tbresisummary {
                     }else {mut<-paste(mut[1],mut[2],mut[3],mut[4], mut[5], mut[6],"and others",sep="; ")
                     freq<-paste(freq[1],freq[2],freq[3],freq[4], freq[5], freq[6],"and others",sep="; ")}
                 }else{
-                        mut<-idx$Mutation_Annotation
+                        mut<-idx$Mutation
                         freq<-round(idx$Freq, digits=2)
                     }');
             
@@ -587,7 +587,7 @@ sub tbcombinedresi{
 
 	
 	if(-f "$RESI_OUT/$output_file") {
-      open(IN,"$RESI_OUT/$output_file") || die print $logprint "<ERROR>\t",timer(),"\tCan't open $output_file: TBresi.pm line: ", __LINE__ , " \n";
+      open(IN,"$RESI_OUT/$output_file") || die print $logprint "\n<ERROR>\t",timer(),"\tCan't open $output_file: TBresi.pm line: ", __LINE__ , " \n";
       <IN>;
       while(<IN>) {
          my $line       =  $_;
@@ -605,7 +605,7 @@ sub tbcombinedresi{
       close Fout;
       print $logprint "<INFO>\t",timer(),"\t","Finished writing $output_file!\n";
    }
-   open (Fout,">>$RESI_OUT/${output_file}") or die "\n<ERROR>\t",timer(),"Cannot open/write $output_file file\n";
+   open (Fout,">>$RESI_OUT/${output_file}") or die "\n<ERROR>\t",timer(),"Cannot open/write $output_file file: TBresi.pm line: ", __LINE__ , " \n";
    
    foreach my $resisum_file (sort { $a cmp $b } @resisum_files) {
 	print $logprint "<INFO>\t",timer(),"\t","Start parsing $resisum_file...\n";
@@ -620,7 +620,7 @@ sub tbcombinedresi{
 		}
 	  
     
-    open (Fin,"<$RESI_OUT/$resisum_file") or die "\n<ERROR>\t",timer(),"Cannot open $resisum_file\n";
+    open (Fin,"<$RESI_OUT/$resisum_file") or die "\n<ERROR>\t",timer(),"Cannot open $resisum_file: TBresi.pm line: ", __LINE__ , " \n";
    
 	my $line = <Fin>; #remove header
 	my $mutations =<Fin>; #store mutation line in a variable
