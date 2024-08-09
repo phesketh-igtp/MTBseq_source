@@ -247,6 +247,7 @@ sub tbresi {
 				elsif($subst=~/(^\w).*(\w$)/ and $1 ne $2){
 				$better_res ="PZA-R#";
 				$better_res_change = $gene_name." ".$subst;
+				$res_comment ="called by global rule, not confirmed";
 				}
 			}
 			###katG reverse
