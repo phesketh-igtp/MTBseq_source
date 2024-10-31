@@ -29,7 +29,7 @@ sub tbgroups {
       my $position_info    =  {};
       my $distance_matrix  =  {};
       my $strains          =  [];
-      $matrix_file         =  strip($joint_file,".matrix");
+      $matrix_file         =  strip($joint_file,("_d" . $distance . ".matrix"));
       $group_file          =  strip($joint_file,("_d" . $distance . ".groups"));
       print $logprint "<INFO>\t",timer(),"\tStart parsing $joint_file...\n";
       parse_amend_table($logprint,$AMEND_OUT,$joint_file,$pivot_hash,$strains,$position_info);
